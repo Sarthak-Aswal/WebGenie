@@ -1,10 +1,10 @@
 import Image from "next/image";
-
+import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
 export default function Home() {
   return (
-   <div className="text-xl md:text-6xl font-bold">
-    Project Under Construction:
-    By- Sarthak,Ayush*2,Saiman
-   </div>
+    <div className="grid w-full gap-2">
+   
+  </div>
   );
 }
