@@ -1,4 +1,5 @@
 "use client";
+import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { Drawer, DrawerContent, DrawerTrigger, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
@@ -15,6 +16,12 @@ const pages = [
 export default function Navbar() {
   const isDesktop = useMediaQuery("(min-width:768px)");
   const pathname = usePathname(); // Get current page path
+  const [isOpen, setIsOpen] = useState(false); // State to control drawer visibility
+
+  // Close drawer when route changes
+  useEffect(() => {
+    setIsOpen(false);
+  }, [pathname]);
 
   return (
     <nav className="flex justify-between items-center py-4 px-6 bg-white shadow-md">
@@ -38,9 +45,9 @@ export default function Navbar() {
           ))}
         </ul>
       ) : (
-        /* Mobile Menu Icon (Always on the Right) */
-        <Drawer>
-          <DrawerTrigger>
+        /* Mobile Navigation Drawer */
+        <Drawer open={isOpen} onOpenChange={setIsOpen}>
+          <DrawerTrigger onClick={() => setIsOpen(!isOpen)}>
             <MenuIcon className="h-6 w-6" />
           </DrawerTrigger>
 
@@ -56,6 +63,7 @@ export default function Navbar() {
                 <Link
                   key={href}
                   href={href}
+                  onClick={() => setIsOpen(false)} // Close drawer on link click
                   className={`px-4 py-2 rounded-lg transition-all duration-300 
                     ${pathname === href ? "bg-blue-600 text-white font-semibold" : "text-gray-700"} 
                     hover:bg-blue-500 hover:text-white`}
