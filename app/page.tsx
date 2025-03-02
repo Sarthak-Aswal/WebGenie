@@ -1,13 +1,37 @@
+"use client";
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Wand2, Code, Sparkles, Zap, ArrowRight } from 'lucide-react';
+import { Wand2, Code, Sparkles, Zap, Shield, Users, ArrowRight } from 'lucide-react';
+import { motion, useScroll, useTransform } from 'framer-motion';
 
 export default function Home() {
+  const { scrollYProgress } = useScroll();
+
+  // Parallax transformations for background elements
+  const yBackground = useTransform(scrollYProgress, [0, 1], ['0%', '50%']);
+  const yForeground = useTransform(scrollYProgress, [0, 1], ['0%', '-20%']);
+  const scaleBackground = useTransform(scrollYProgress, [0, 1], [1, 1.2]);
+
   return (
     <main className="flex flex-col min-h-screen">
       {/* Hero Section */}
-      <section className="py-20 md:py-28 bg-gradient-to-b from-background to-muted">
-        <div className="container px-4 md:px-6">
+      <motion.section
+        initial={{ opacity: 0, y: 50 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8 }}
+        viewport={{ once: true }}
+        className="py-20 md:py-28 bg-gradient-to-b from-background to-muted relative overflow-hidden"
+      >
+        {/* Parallax Background */}
+        <motion.div
+          style={{ y: yBackground, scale: scaleBackground }}
+          className="absolute inset-0 bg-gradient-to-r from-primary/10 to-secondary/10"
+        />
+        {/* Foreground Content */}
+        <motion.div
+          style={{ y: yForeground }}
+          className="container px-4 md:px-6 relative z-10"
+        >
           <div className="flex flex-col items-center space-y-4 text-center">
             <div className="space-y-2">
               <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl">
@@ -28,12 +52,27 @@ export default function Home() {
               </Button>
             </div>
           </div>
-        </div>
-      </section>
+        </motion.div>
+      </motion.section>
 
       {/* Prompt Demo Section */}
-      <section className="py-16 md:py-24">
-        <div className="container px-4 md:px-6">
+      <motion.section
+        initial={{ opacity: 0, y: 50 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: 0.2 }}
+        viewport={{ once: true }}
+        className="py-16 md:py-24 relative overflow-hidden"
+      >
+        {/* Parallax Background */}
+        <motion.div
+          style={{ y: yBackground }}
+          className="absolute inset-0 bg-gradient-to-r from-primary/10 to-secondary/10"
+        />
+        {/* Foreground Content */}
+        <motion.div
+          style={{ y: yForeground }}
+          className="container px-4 md:px-6 relative z-10"
+        >
           <div className="grid gap-6 lg:grid-cols-2 lg:gap-12 items-center">
             <div className="space-y-4">
               <div className="inline-block rounded-lg bg-muted px-3 py-1 text-sm">
@@ -66,7 +105,13 @@ export default function Home() {
                 </div>
               </div>
             </div>
-            <div className="rounded-xl border bg-card p-6 shadow-sm">
+            <motion.div
+              initial={{ scale: 0.9 }}
+              whileInView={{ scale: 1 }}
+              transition={{ duration: 0.8 }}
+              viewport={{ once: true }}
+              className="rounded-xl border bg-card p-6 shadow-sm"
+            >
               <div className="space-y-4">
                 <div className="space-y-2">
                   <h3 className="text-xl font-semibold">Try it yourself</h3>
@@ -85,14 +130,29 @@ export default function Home() {
                   </Button>
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
-        </div>
-      </section>
+        </motion.div>
+      </motion.section>
 
       {/* Features Section */}
-      <section className="py-16 md:py-24 bg-muted/50">
-        <div className="container px-4 md:px-6">
+      <motion.section
+        initial={{ opacity: 0, y: 50 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: 0.4 }}
+        viewport={{ once: true }}
+        className="py-16 md:py-24 bg-muted/50 relative overflow-hidden"
+      >
+        {/* Parallax Background */}
+        <motion.div
+          style={{ y: yBackground }}
+          className="absolute inset-0 bg-gradient-to-r from-primary/10 to-secondary/10"
+        />
+        {/* Foreground Content */}
+        <motion.div
+          style={{ y: yForeground }}
+          className="container px-4 md:px-6 relative z-10"
+        >
           <div className="flex flex-col items-center justify-center space-y-4 text-center">
             <div className="space-y-2">
               <div className="inline-block rounded-lg bg-muted px-3 py-1 text-sm">
@@ -107,96 +167,46 @@ export default function Home() {
             </div>
           </div>
           <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 mt-12">
-            <div className="flex flex-col items-center space-y-2 rounded-lg border bg-card p-6 shadow-sm">
-              <div className="rounded-full bg-primary/10 p-3">
-                <Wand2 className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="text-xl font-semibold">AI-Powered Design</h3>
-              <p className="text-center text-muted-foreground">
-                Our AI understands your vision and creates beautiful, responsive designs that match your description.
-              </p>
-            </div>
-            <div className="flex flex-col items-center space-y-2 rounded-lg border bg-card p-6 shadow-sm">
-              <div className="rounded-full bg-primary/10 p-3">
-                <Code className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="text-xl font-semibold">Clean Code</h3>
-              <p className="text-center text-muted-foreground">
-                Generate production-ready code that's optimized for performance and easy to customize.
-              </p>
-            </div>
-            <div className="flex flex-col items-center space-y-2 rounded-lg border bg-card p-6 shadow-sm">
-              <div className="rounded-full bg-primary/10 p-3">
-                <Sparkles className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="text-xl font-semibold">Customizable Templates</h3>
-              <p className="text-center text-muted-foreground">
-                Start with AI-generated designs and easily customize them to match your brand.
-              </p>
-            </div>
-            <div className="flex flex-col items-center space-y-2 rounded-lg border bg-card p-6 shadow-sm">
-              <div className="rounded-full bg-primary/10 p-3">
-                <Zap className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="text-xl font-semibold">Lightning Fast</h3>
-              <p className="text-center text-muted-foreground">
-                Generate complete websites in minutes, not days or weeks.
-              </p>
-            </div>
-            <div className="flex flex-col items-center space-y-2 rounded-lg border bg-card p-6 shadow-sm">
-              <div className="rounded-full bg-primary/10 p-3">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-6 w-6 text-primary"
-                >
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold">Secure & Reliable</h3>
-              <p className="text-center text-muted-foreground">
-                Built with security in mind and optimized for reliability and performance.
-              </p>
-            </div>
-            <div className="flex flex-col items-center space-y-2 rounded-lg border bg-card p-6 shadow-sm">
-              <div className="rounded-full bg-primary/10 p-3">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-6 w-6 text-primary"
-                >
-                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold">Collaborative</h3>
-              <p className="text-center text-muted-foreground">
-                Share your projects with team members and clients for seamless collaboration.
-              </p>
-            </div>
+            {features.map((feature, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 50 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: index * 0.2 }}
+                viewport={{ once: true }}
+                className="flex flex-col items-center space-y-2 rounded-lg border bg-card p-6 shadow-sm"
+              >
+                <div className="rounded-full bg-primary/10 p-3">
+                  <feature.icon className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold">{feature.title}</h3>
+                <p className="text-center text-muted-foreground">
+                  {feature.description}
+                </p>
+              </motion.div>
+            ))}
           </div>
-        </div>
-      </section>
+        </motion.div>
+      </motion.section>
 
       {/* Testimonials Section */}
-      <section className="py-16 md:py-24">
-        <div className="container px-4 md:px-6">
+      <motion.section
+        initial={{ opacity: 0, y: 50 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: 0.6 }}
+        viewport={{ once: true }}
+        className="py-16 md:py-24 relative overflow-hidden"
+      >
+        {/* Parallax Background */}
+        <motion.div
+          style={{ y: yBackground }}
+          className="absolute inset-0 bg-gradient-to-r from-primary/10 to-secondary/10"
+        />
+        {/* Foreground Content */}
+        <motion.div
+          style={{ y: yForeground }}
+          className="container px-4 md:px-6 relative z-10"
+        >
           <div className="flex flex-col items-center justify-center space-y-4 text-center">
             <div className="space-y-2">
               <div className="inline-block rounded-lg bg-muted px-3 py-1 text-sm">
@@ -211,85 +221,61 @@ export default function Home() {
             </div>
           </div>
           <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 mt-12">
-            <div className="flex flex-col justify-between rounded-lg border bg-card p-6 shadow-sm">
-              <div className="space-y-4">
-                <p className="text-muted-foreground">
-                  "WebGenie saved me weeks of development time. I described my e-commerce site, and it generated a beautiful, functional website in minutes."
-                </p>
-              </div>
-              <div className="mt-6 flex items-center">
-                <img
-                  alt="Avatar"
-                  className="rounded-full"
-                  height="40"
-                  src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=100&auto=format&fit=crop"
-                  style={{
-                    aspectRatio: "40/40",
-                    objectFit: "cover",
-                  }}
-                  width="40"
-                />
-                <div className="ml-4">
-                  <p className="text-sm font-medium">Sarah Johnson</p>
-                  <p className="text-sm text-muted-foreground">Entrepreneur</p>
+            {testimonials.map((testimonial, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 50 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: index * 0.2 }}
+                viewport={{ once: true }}
+                className="flex flex-col justify-between rounded-lg border bg-card p-6 shadow-sm"
+              >
+                <div className="space-y-4">
+                  <p className="text-muted-foreground">
+                    {testimonial.quote}
+                  </p>
                 </div>
-              </div>
-            </div>
-            <div className="flex flex-col justify-between rounded-lg border bg-card p-6 shadow-sm">
-              <div className="space-y-4">
-                <p className="text-muted-foreground">
-                  "As a designer with limited coding skills, WebGenie has been a game-changer. I can now bring my designs to life without writing a single line of code."
-                </p>
-              </div>
-              <div className="mt-6 flex items-center">
-                <img
-                  alt="Avatar"
-                  className="rounded-full"
-                  height="40"
-                  src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=100&auto=format&fit=crop"
-                  style={{
-                    aspectRatio: "40/40",
-                    objectFit: "cover",
-                  }}
-                  width="40"
-                />
-                <div className="ml-4">
-                  <p className="text-sm font-medium">Michael Chen</p>
-                  <p className="text-sm text-muted-foreground">UI Designer</p>
+                <div className="mt-6 flex items-center">
+                  <img
+                    alt="Avatar"
+                    className="rounded-full"
+                    height="40"
+                    src={testimonial.avatar}
+                    style={{
+                      aspectRatio: "40/40",
+                      objectFit: "cover",
+                    }}
+                    width="40"
+                  />
+                  <div className="ml-4">
+                    <p className="text-sm font-medium">{testimonial.name}</p>
+                    <p className="text-sm text-muted-foreground">{testimonial.role}</p>
+                  </div>
                 </div>
-              </div>
-            </div>
-            <div className="flex flex-col justify-between rounded-lg border bg-card p-6 shadow-sm">
-              <div className="space-y-4">
-                <p className="text-muted-foreground">
-                  "Our agency has been able to take on more clients and deliver projects faster thanks to WebGenie. It's like having an extra developer on the team."
-                </p>
-              </div>
-              <div className="mt-6 flex items-center">
-                <img
-                  alt="Avatar"
-                  className="rounded-full"
-                  height="40"
-                  src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=100&auto=format&fit=crop"
-                  style={{
-                    aspectRatio: "40/40",
-                    objectFit: "cover",
-                  }}
-                  width="40"
-                />
-                <div className="ml-4">
-                  <p className="text-sm font-medium">Emily Rodriguez</p>
-                  <p className="text-sm text-muted-foreground">Agency Owner</p>
-                </div>
-              </div>
-            </div>
+              </motion.div>
+            ))}
           </div>
-        </div>
-      </section>
+        </motion.div>
+      </motion.section>
 
       {/* CTA Section */}
-      <section className="py-16 md:py-24 bg-primary text-primary-foreground">
-        <div className="container px-4 md:px-6">
+      <motion.section
+        initial={{ opacity: 0, y: 50 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: 0.8 }}
+        viewport={{ once: true }}
+        className="py-16 md:py-24 bg-primary text-primary-foreground relative overflow-hidden"
+      >
+        {/* Parallax Background */}
+        <motion.div
+          style={{ y: yBackground }}
+          className="absolute inset-0 bg-gradient-to-r from-primary/10 to-secondary/10"
+        />
+        {/* Foreground Content */}
+        <motion.div
+          style={{ y: yForeground }}
+          className="container px-4 md:px-6 relative z-10"
+        >
           <div className="flex flex-col items-center justify-center space-y-4 text-center">
             <div className="space-y-2">
               <h2 className="text-3xl font-bold tracking-tighter md:text-4xl">
@@ -308,8 +294,8 @@ export default function Home() {
               </Button>
             </div>
           </div>
-        </div>
-      </section>
+        </motion.div>
+      </motion.section>
 
       {/* Footer */}
       <footer className="border-t bg-background">
@@ -454,3 +440,58 @@ export default function Home() {
     </main>
   );
 }
+
+// Data for features and testimonials
+const features = [
+  {
+    icon: Wand2,
+    title: "AI-Powered Design",
+    description: "Our AI understands your vision and creates beautiful, responsive designs that match your description.",
+  },
+  {
+    icon: Code,
+    title: "Clean Code",
+    description: "Generate production-ready code that's optimized for performance and easy to customize.",
+  },
+  {
+    icon: Sparkles,
+    title: "Customizable Templates",
+    description: "Start with AI-generated designs and easily customize them to match your brand.",
+  },
+  {
+    icon: Zap,
+    title: "Lightning Fast",
+    description: "Generate complete websites in minutes, not days or weeks.",
+  },
+  {
+    icon: Shield,
+    title: "Secure & Reliable",
+    description: "Built with security in mind and optimized for reliability and performance.",
+  },
+  {
+    icon: Users,
+    title: "Collaborative",
+    description: "Share your projects with team members and clients for seamless collaboration.",
+  },
+];
+
+const testimonials = [
+  {
+    quote: "WebGenie saved me weeks of development time. I described my e-commerce site, and it generated a beautiful, functional website in minutes.",
+    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=100&auto=format&fit=crop",
+    name: "Sarah Johnson",
+    role: "Entrepreneur",
+  },
+  {
+    quote: "As a designer with limited coding skills, WebGenie has been a game-changer. I can now bring my designs to life without writing a single line of code.",
+    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=100&auto=format&fit=crop",
+    name: "Michael Chen",
+    role: "UI Designer",
+  },
+  {
+    quote: "Our agency has been able to take on more clients and deliver projects faster thanks to WebGenie. It's like having an extra developer on the team.",
+    avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=100&auto=format&fit=crop",
+    name: "Emily Rodriguez",
+    role: "Agency Owner",
+  },
+];
