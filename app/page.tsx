@@ -7,10 +7,10 @@ import { motion, useScroll, useTransform } from 'framer-motion';
 export default function Home() {
   const { scrollYProgress } = useScroll();
 
-  // Parallax transformations for background elements
-  const yBackground = useTransform(scrollYProgress, [0, 1], ['0%', '50%']);
+  // Parallax transformations for background and foreground
+  const yBackground = useTransform(scrollYProgress, [0, 1], ['0%', '30%']);
   const yForeground = useTransform(scrollYProgress, [0, 1], ['0%', '-20%']);
-  const scaleBackground = useTransform(scrollYProgress, [0, 1], [1, 1.2]);
+  const scaleBackground = useTransform(scrollYProgress, [0, 1], [1, 1.1]);
 
   return (
     <main className="flex flex-col min-h-screen">
@@ -20,13 +20,18 @@ export default function Home() {
         whileInView={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
         viewport={{ once: true }}
-        className="py-20 md:py-28 bg-gradient-to-b from-background to-muted relative overflow-hidden"
+        className="py-20 md:py-28 relative overflow-hidden"
       >
-        {/* Parallax Background */}
+        {/* Background Image with Gradient Overlay */}
         <motion.div
           style={{ y: yBackground, scale: scaleBackground }}
-          className="absolute inset-0 bg-gradient-to-r from-primary/10 to-secondary/10"
+          className="absolute inset-0 bg-[url('/images/bg.jpg')] bg-cover bg-center opacity-50 dark:opacity-30"
         />
+        <motion.div
+          style={{ y: yBackground }}
+          className="absolute inset-0 bg-gradient-to-r from-primary/20 to-secondary/20 dark:from-primary/30 dark:to-secondary/30"
+        />
+
         {/* Foreground Content */}
         <motion.div
           style={{ y: yForeground }}
@@ -63,11 +68,16 @@ export default function Home() {
         viewport={{ once: true }}
         className="py-16 md:py-24 relative overflow-hidden"
       >
-        {/* Parallax Background */}
+        {/* Background Image with Gradient Overlay */}
         <motion.div
           style={{ y: yBackground }}
-          className="absolute inset-0 bg-gradient-to-r from-primary/10 to-secondary/10"
+          className="absolute inset-0 bg-[url('/images/demo-bg.jpg')] bg-cover bg-center opacity-50 dark:opacity-30"
         />
+        <motion.div
+          style={{ y: yBackground }}
+          className="absolute inset-0 bg-gradient-to-r from-primary/20 to-secondary/20 dark:from-primary/30 dark:to-secondary/30"
+        />
+
         {/* Foreground Content */}
         <motion.div
           style={{ y: yForeground }}
@@ -143,11 +153,16 @@ export default function Home() {
         viewport={{ once: true }}
         className="py-16 md:py-24 bg-muted/50 relative overflow-hidden"
       >
-        {/* Parallax Background */}
+        {/* Background Image with Gradient Overlay */}
         <motion.div
           style={{ y: yBackground }}
-          className="absolute inset-0 bg-gradient-to-r from-primary/10 to-secondary/10"
+          className="absolute inset-0 bg-[url('/images/features-bg.jpg')] bg-cover bg-center opacity-50 dark:opacity-30"
         />
+        <motion.div
+          style={{ y: yBackground }}
+          className="absolute inset-0 bg-gradient-to-r from-primary/20 to-secondary/20 dark:from-primary/30 dark:to-secondary/30"
+        />
+
         {/* Foreground Content */}
         <motion.div
           style={{ y: yForeground }}
@@ -197,11 +212,16 @@ export default function Home() {
         viewport={{ once: true }}
         className="py-16 md:py-24 relative overflow-hidden"
       >
-        {/* Parallax Background */}
+        {/* Background Image with Gradient Overlay */}
         <motion.div
           style={{ y: yBackground }}
-          className="absolute inset-0 bg-gradient-to-r from-primary/10 to-secondary/10"
+          className="absolute inset-0 bg-[url('/images/testimonials-bg.jpg')] bg-cover bg-center opacity-50 dark:opacity-30"
         />
+        <motion.div
+          style={{ y: yBackground }}
+          className="absolute inset-0 bg-gradient-to-r from-primary/20 to-secondary/20 dark:from-primary/30 dark:to-secondary/30"
+        />
+
         {/* Foreground Content */}
         <motion.div
           style={{ y: yForeground }}
@@ -266,11 +286,16 @@ export default function Home() {
         viewport={{ once: true }}
         className="py-16 md:py-24 bg-primary text-primary-foreground relative overflow-hidden"
       >
-        {/* Parallax Background */}
+        {/* Background Image with Gradient Overlay */}
         <motion.div
           style={{ y: yBackground }}
-          className="absolute inset-0 bg-gradient-to-r from-primary/10 to-secondary/10"
+          className="absolute inset-0 bg-[url('/images/cta-bg.jpg')] bg-cover bg-center opacity-50 dark:opacity-30"
         />
+        <motion.div
+          style={{ y: yBackground }}
+          className="absolute inset-0 bg-gradient-to-r from-primary/20 to-secondary/20 dark:from-primary/30 dark:to-secondary/30"
+        />
+
         {/* Foreground Content */}
         <motion.div
           style={{ y: yForeground }}
