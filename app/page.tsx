@@ -1,16 +1,114 @@
 "use client";
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Wand2, Code, Sparkles, Zap, Shield, Users, ArrowRight } from 'lucide-react';
 import { motion, useScroll, useTransform } from 'framer-motion';
+import { useState } from 'react';
 
 export default function Home() {
+  const router = useRouter();
+  const [prompt, setPrompt] = useState('');
   const { scrollYProgress } = useScroll();
 
   // Parallax transformations for background and foreground
   const yBackground = useTransform(scrollYProgress, [0, 1], ['0%', '30%']);
   const yForeground = useTransform(scrollYProgress, [0, 1], ['0%', '-20%']);
   const scaleBackground = useTransform(scrollYProgress, [0, 1], [1, 1.1]);
+
+  const handleGenerate = () => {
+    // Generate a basic template based on the prompt
+    const basicTemplate = generateBasicTemplate(prompt);
+    // Store in session storage to pass to editor
+    sessionStorage.setItem('generatedTemplate', JSON.stringify(basicTemplate));
+    // Navigate to editor
+    router.push('/editor');
+  };
+
+  const generateBasicTemplate = (userPrompt: string) => {
+    return {
+      name: userPrompt || "My Generated Website",
+      html: `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${userPrompt || 'Generated Website'}</title>
+  <style>
+    /* Basic reset */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background-color: #f5f5f5;
+    }
+    
+    header {
+      background: #4a6fa5;
+      color: white;
+      padding: 2rem;
+      text-align: center;
+    }
+    
+    main {
+      padding: 2rem;
+      max-width: 1200px;
+      margin: 0 auto;
+      min-height: calc(100vh - 200px);
+    }
+    
+    h1 {
+      margin-bottom: 1rem;
+    }
+    
+    p {
+      margin-bottom: 1.5rem;
+    }
+    
+    footer {
+      background: #333;
+      color: white;
+      text-align: center;
+      padding: 1.5rem;
+    }
+    
+    /* Responsive design */
+    @media (max-width: 768px) {
+      header {
+        padding: 1.5rem;
+      }
+      main {
+        padding: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>${userPrompt || 'Welcome to My Website'}</h1>
+    <p>This website was generated using WebGenie</p>
+  </header>
+  
+  <main>
+    <section>
+      <h2>About This Page</h2>
+      <p>${userPrompt || 'This is a basic template that you can now customize using the editor.'}</p>
+      <p>Edit the code on the left side and see changes instantly on the right.</p>
+    </section>
+  </main>
+  
+  <footer>
+    <p>&copy; ${new Date().getFullYear()} My Website. All rights reserved.</p>
+  </footer>
+</body>
+</html>`
+    };
+  };
 
   return (
     <main className="flex flex-col min-h-screen">
@@ -48,7 +146,7 @@ export default function Home() {
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-4">
-              <Button size="lg" className="h-12 px-8">
+              <Button size="lg" className="h-12 px-8" onClick={() => router.push('/editor')}>
                 Try It Free
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
@@ -133,8 +231,10 @@ export default function Home() {
                   <textarea
                     className="min-h-[150px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     placeholder="Create a modern portfolio website for a photographer with a gallery section, about page, and contact form..."
-                  ></textarea>
-                  <Button className="w-full">
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                  />
+                  <Button className="w-full" onClick={handleGenerate}>
                     <Wand2 className="mr-2 h-4 w-4" />
                     Generate Website
                   </Button>
@@ -311,7 +411,7 @@ export default function Home() {
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-4">
-              <Button size="lg" variant="secondary" className="h-12 px-8">
+              <Button size="lg" variant="secondary" className="h-12 px-8" onClick={() => router.push('/editor')}>
                 Get Started Free
               </Button>
               <Button size="lg" variant="outline" className="h-12 px-8 bg-transparent border-primary-foreground hover:bg-primary-foreground hover:text-primary">
@@ -321,9 +421,6 @@ export default function Home() {
           </div>
         </motion.div>
       </motion.section>
-
-      {/* Footer */}
-      
     </main>
   );
 }
