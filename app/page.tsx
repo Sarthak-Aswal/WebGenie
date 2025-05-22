@@ -20,7 +20,7 @@ export default function Home() {
 
   const generateWithGemini = async (userPrompt: string) => {
     try {
-      const apiKey = "AIzaSyB_MsKObdqEcBD2rgfnxJMflcVez2l0Mfs";
+      const apiKey = "AIzaSyB_MsKOez2l0Mfs";
       if (!apiKey) {
         throw new Error('API key is missing');
       }
