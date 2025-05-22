@@ -2,12 +2,14 @@
 import { useEffect, useState } from 'react';
 import Editor from '@monaco-editor/react';
 import { Button } from '@/components/ui/button';
-import { Save, RotateCw, Loader2, Download, Smartphone, Tablet, Monitor, FolderTree } from 'lucide-react';
+import { Save, RotateCw, Loader2, Download, Smartphone, Tablet, Monitor, FolderTree, Wand2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SEOAnalyzer } from '@/components/seo-analyzer';
 import JSZip from 'jszip';
+import { Input } from '@/components/ui/input';
+import { generateSite } from '@/lib/generate-site';
 
 interface ProjectFiles {
   'index.html': string;
@@ -24,6 +26,8 @@ export default function EditorPage() {
   const [activeFile, setActiveFile] = useState<keyof ProjectFiles>('index.html');
   const [isLoading, setIsLoading] = useState(true);
   const [isPreviewLoading, setIsPreviewLoading] = useState(true);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [prompt, setPrompt] = useState('');
   const [previewWidth, setPreviewWidth] = useState('100%');
   const [activeDevice, setActiveDevice] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
   const router = useRouter();
@@ -132,6 +136,30 @@ document.addEventListener('DOMContentLoaded', function() {
     handleRefreshPreview();
   };
 
+  const handleGenerate = async () => {
+    if (!prompt.trim()) {
+      toast.error('Please enter a description');
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const generated = await generateSite(prompt);
+      setFiles({
+        'index.html': generated.html,
+        'css/styles.css': generated.css,
+        'js/main.js': generated.js,
+      });
+      handleRefreshPreview();
+      toast.success('Website updated successfully');
+    } catch (error) {
+      toast.error('Failed to generate website');
+      console.error(error);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const handleSave = () => {
     try {
       localStorage.setItem('lastSavedFiles', JSON.stringify(files));
@@ -220,6 +248,31 @@ document.addEventListener('DOMContentLoaded', function() {
         <div className="container mx-auto flex justify-between items-center">
           <h1 className="text-xl font-bold">WebGenie Editor</h1>
           <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 mr-4">
+              <Input
+                placeholder="Describe your changes..."
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                className="w-64"
+                onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}
+              />
+              <Button 
+                onClick={handleGenerate}
+                disabled={isGenerating}
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Wand2 className="mr-2 h-4 w-4" />
+                    Generate
+                  </>
+                )}
+              </Button>
+            </div>
             <Button variant="outline" onClick={() => router.push('/')}>
               Back to Generator
             </Button>
