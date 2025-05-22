@@ -1,114 +1,105 @@
 "use client";
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Wand2, Code, Sparkles, Zap, Shield, Users, ArrowRight } from 'lucide-react';
+import { Wand2, Code, Sparkles, Zap, Shield, Users, ArrowRight, Loader2 } from 'lucide-react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { useState } from 'react';
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+// Initialize Gemini with API key from environment variables
+const genAI = new GoogleGenerativeAI("");
 
 export default function Home() {
   const router = useRouter();
   const [prompt, setPrompt] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState('');
   const { scrollYProgress } = useScroll();
+  
 
+
+  const generateWithGemini = async (userPrompt: string) => {
+    try {
+      const apiKey = "AIzaSyB_MsKObdqEcBD2rgfnxJMflcVez2l0Mfs";
+      if (!apiKey) {
+        throw new Error('API key is missing');
+      }
+
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: `Generate a complete HTML and CSS and javascript website based on this description. Only give code nothing else. And do css and javascript inline within the html file.
+              
+              
+              Description: ${userPrompt}   
+      }`
+            }]
+          }]
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || 'API request failed');
+      }
+
+      const data = await response.json();
+      const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (!generatedText) {
+        throw new Error('No generated content found in response');
+      }
+
+      // Basic validation
+      if (!generatedText.includes('<!DOCTYPE html>') || !generatedText.includes('<html')) {
+        throw new Error('Invalid HTML generated');
+      }
+
+      return generatedText;
+    } catch (err) {
+      console.error("Generation error:", err);
+      throw new Error('Failed to generate website. Please try a different prompt.');
+    }
+  };
+
+  const handleGenerate = async () => {
+    if (!prompt.trim()) {
+      setError('Please enter a description');
+      return;
+    }
+
+    setIsGenerating(true);
+    setError('');
+
+    try {
+      const generatedHtml = await generateWithGemini(prompt);
+      
+      const template = {
+        name: prompt || "Generated Website",
+        html: generatedHtml
+      };
+      
+      sessionStorage.setItem('generatedTemplate', JSON.stringify(template));
+      router.push('/editor');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Generation failed. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
   // Parallax transformations for background and foreground
   const yBackground = useTransform(scrollYProgress, [0, 1], ['0%', '30%']);
   const yForeground = useTransform(scrollYProgress, [0, 1], ['0%', '-20%']);
   const scaleBackground = useTransform(scrollYProgress, [0, 1], [1, 1.1]);
 
-  const handleGenerate = () => {
-    // Generate a basic template based on the prompt
-    const basicTemplate = generateBasicTemplate(prompt);
-    // Store in session storage to pass to editor
-    sessionStorage.setItem('generatedTemplate', JSON.stringify(basicTemplate));
-    // Navigate to editor
-    router.push('/editor');
-  };
-
-  const generateBasicTemplate = (userPrompt: string) => {
-    return {
-      name: userPrompt || "My Generated Website",
-      html: `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${userPrompt || 'Generated Website'}</title>
-  <style>
-    /* Basic reset */
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      line-height: 1.6;
-      color: #333;
-      background-color: #f5f5f5;
-    }
-    
-    header {
-      background: #4a6fa5;
-      color: white;
-      padding: 2rem;
-      text-align: center;
-    }
-    
-    main {
-      padding: 2rem;
-      max-width: 1200px;
-      margin: 0 auto;
-      min-height: calc(100vh - 200px);
-    }
-    
-    h1 {
-      margin-bottom: 1rem;
-    }
-    
-    p {
-      margin-bottom: 1.5rem;
-    }
-    
-    footer {
-      background: #333;
-      color: white;
-      text-align: center;
-      padding: 1.5rem;
-    }
-    
-    /* Responsive design */
-    @media (max-width: 768px) {
-      header {
-        padding: 1.5rem;
-      }
-      main {
-        padding: 1.5rem;
-      }
-    }
-  </style>
-</head>
-<body>
-  <header>
-    <h1>${userPrompt || 'Welcome to My Website'}</h1>
-    <p>This website was generated using WebGenie</p>
-  </header>
-  
-  <main>
-    <section>
-      <h2>About This Page</h2>
-      <p>${userPrompt || 'This is a basic template that you can now customize using the editor.'}</p>
-      <p>Edit the code on the left side and see changes instantly on the right.</p>
-    </section>
-  </main>
-  
-  <footer>
-    <p>&copy; ${new Date().getFullYear()} My Website. All rights reserved.</p>
-  </footer>
-</body>
-</html>`
-    };
-  };
+ 
 
   return (
     <main className="flex flex-col min-h-screen">
@@ -232,12 +223,25 @@ export default function Home() {
                     className="min-h-[150px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     placeholder="Create a modern portfolio website for a photographer with a gallery section, about page, and contact form..."
                     value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
+                onChange={(e) => setPrompt(e.target.value)}
                   />
-                  <Button className="w-full" onClick={handleGenerate}>
-                    <Wand2 className="mr-2 h-4 w-4" />
-                    Generate Website
-                  </Button>
+                 <Button 
+    className="w-full" 
+    onClick={handleGenerate}
+    disabled={isGenerating}
+  >
+    {isGenerating ? (
+      <>
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        Generating...
+      </>
+    ) : (
+      <>
+        <Wand2 className="mr-2 h-4 w-4" />
+        Generate Website
+      </>
+    )}
+  </Button>
                 </div>
               </div>
             </motion.div>
