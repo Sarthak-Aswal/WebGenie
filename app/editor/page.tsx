@@ -2,34 +2,57 @@
 import { useEffect, useState } from 'react';
 import Editor from '@monaco-editor/react';
 import { Button } from '@/components/ui/button';
-import { Save, RotateCw, Loader2, Download, Smartphone, Tablet, Monitor } from 'lucide-react';
+import { Save, RotateCw, Loader2, Download, Smartphone, Tablet, Monitor, FolderTree } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SEOAnalyzer } from '@/components/seo-analyzer';
+import JSZip from 'jszip';
+
+interface ProjectFiles {
+  'index.html': string;
+  'css/styles.css': string;
+  'js/main.js': string;
+}
 
 export default function EditorPage() {
-  const [code, setCode] = useState<string>('');
+  const [files, setFiles] = useState<ProjectFiles>({
+    'index.html': '',
+    'css/styles.css': '',
+    'js/main.js': '',
+  });
+  const [activeFile, setActiveFile] = useState<keyof ProjectFiles>('index.html');
   const [isLoading, setIsLoading] = useState(true);
   const [isPreviewLoading, setIsPreviewLoading] = useState(true);
-  const [fileName, setFileName] = useState('untitled.html');
   const [previewWidth, setPreviewWidth] = useState('100%');
   const [activeDevice, setActiveDevice] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
   const router = useRouter();
 
-    useEffect(() => {
+  useEffect(() => {
     const generatedTemplate = sessionStorage.getItem('generatedTemplate');
     
     if (generatedTemplate) {
       try {
         const template = JSON.parse(generatedTemplate);
-        setCode(template.html);
+        setFiles({
+          'index.html': template.html || getEmptyTemplate(),
+          'css/styles.css': template.css || getEmptyCSS(),
+          'js/main.js': template.js || getEmptyJS(),
+        });
       } catch (error) {
         console.error('Error parsing template:', error);
-        setCode(getEmptyTemplate());
+        setFiles({
+          'index.html': getEmptyTemplate(),
+          'css/styles.css': getEmptyCSS(),
+          'js/main.js': getEmptyJS(),
+        });
       }
     } else {
-      setCode(getEmptyTemplate());
+      setFiles({
+        'index.html': getEmptyTemplate(),
+        'css/styles.css': getEmptyCSS(),
+        'js/main.js': getEmptyJS(),
+      });
     }
     
     setIsLoading(false);
@@ -42,50 +65,64 @@ export default function EditorPage() {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>New Website</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 20px;
-      line-height: 1.6;
-      background-color: #f5f5f5;
-    }
-    h1 {
-      color: #333;
-      text-align: center;
-    }
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 20px;
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    @media (max-width: 768px) {
-      body {
-        padding: 10px;
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
   <div class="container">
     <h1>Welcome to Your New Website</h1>
     <p>Start editing here...</p>
   </div>
+  <script src="js/main.js"></script>
 </body>
 </html>`;
+  };
+
+  const getEmptyCSS = () => {
+    return `/* Main Styles */
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 20px;
+  line-height: 1.6;
+  background-color: #f5f5f5;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+h1 {
+  color: #333;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  body {
+    padding: 10px;
+  }
+}`;
+  };
+
+  const getEmptyJS = () => {
+    return `// Main JavaScript
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('Website loaded successfully!');
+});`;
   };
 
   const handleDeviceChange = (device: 'mobile' | 'tablet' | 'desktop') => {
     setActiveDevice(device);
     switch (device) {
       case 'mobile':
-        setPreviewWidth('375px'); // iPhone SE width
+        setPreviewWidth('375px');
         break;
       case 'tablet':
-        setPreviewWidth('768px'); // iPad Mini width
+        setPreviewWidth('768px');
         break;
       case 'desktop':
         setPreviewWidth('100%');
@@ -97,29 +134,40 @@ export default function EditorPage() {
 
   const handleSave = () => {
     try {
-      localStorage.setItem('lastSavedCode', code);
-      toast.success('Code saved locally');
+      localStorage.setItem('lastSavedFiles', JSON.stringify(files));
+      toast.success('Files saved locally');
     } catch (error) {
       console.error('Save error:', error);
-      toast.error('Failed to save code');
+      toast.error('Failed to save files');
     }
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     try {
-      const blob = new Blob([code], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
+      const zip = new JSZip();
+      
+      // Add files to zip
+      zip.file('index.html', files['index.html']);
+      zip.file('css/styles.css', files['css/styles.css']);
+      zip.file('js/main.js', files['js/main.js']);
+      
+      // Generate zip file
+      const content = await zip.generateAsync({ type: 'blob' });
+      
+      // Create download link
+      const url = URL.createObjectURL(content);
       const a = document.createElement('a');
       a.href = url;
-      a.download = fileName;
+      a.download = 'website.zip';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast.success('File downloaded');
+      
+      toast.success('Files downloaded');
     } catch (error) {
       console.error('Download error:', error);
-      toast.error('Failed to download file');
+      toast.error('Failed to download files');
     }
   };
 
@@ -127,11 +175,15 @@ export default function EditorPage() {
     setIsPreviewLoading(true);
     const iframe = document.getElementById('preview') as HTMLIFrameElement;
     if (iframe) {
+      const html = files['index.html']
+        .replace('<link rel="stylesheet" href="css/styles.css">', `<style>${files['css/styles.css']}</style>`)
+        .replace('<script src="js/main.js"></script>', `<script>${files['js/main.js']}</script>`);
+
       const newIframe = document.createElement('iframe');
       newIframe.id = 'preview';
       newIframe.className = 'w-full h-full border-0';
       newIframe.sandbox = 'allow-same-origin allow-scripts allow-modals allow-forms';
-      newIframe.srcdoc = code;
+      newIframe.srcdoc = html;
       newIframe.onload = () => setIsPreviewLoading(false);
       
       const container = iframe.parentElement;
@@ -141,11 +193,14 @@ export default function EditorPage() {
   };
 
   const handleNewProject = () => {
-    if (code !== getEmptyTemplate() && !confirm('Are you sure? Unsaved changes will be lost.')) {
+    if (!confirm('Are you sure? Unsaved changes will be lost.')) {
       return;
     }
-    setCode(getEmptyTemplate());
-    setFileName('untitled.html');
+    setFiles({
+      'index.html': getEmptyTemplate(),
+      'css/styles.css': getEmptyCSS(),
+      'js/main.js': getEmptyJS(),
+    });
   };
 
   if (isLoading) {
@@ -216,25 +271,55 @@ export default function EditorPage() {
       </header>
       
       <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
-        {/* Editor */}
-        <div className="flex-1 border-r overflow-hidden">
-          <Editor
-            height="100%"
-            defaultLanguage="html"
-            value={code}
-            onChange={(value) => setCode(value || '')}
-            theme="vs-dark"
-            options={{
-              fontSize: 14,
-              minimap: { enabled: false },
-              scrollBeyondLastLine: false,
-              automaticLayout: true,
-              wordWrap: 'on',
-              formatOnPaste: true,
-              formatOnType: true,
-            }}
-            loading={<div className="flex items-center justify-center h-full">Loading editor...</div>}
-          />
+        {/* File Explorer and Editor */}
+        <div className="flex-1 border-r overflow-hidden flex">
+          {/* File Explorer */}
+          <div className="w-48 border-r bg-muted/30 p-4">
+            <div className="flex items-center gap-2 mb-4">
+              <FolderTree className="h-4 w-4" />
+              <span className="font-medium">Project Files</span>
+            </div>
+            <div className="space-y-2">
+              {(Object.keys(files) as Array<keyof ProjectFiles>).map((file) => (
+                <button
+                  key={file}
+                  onClick={() => setActiveFile(file)}
+                  className={`w-full text-left px-2 py-1 rounded text-sm ${
+                    activeFile === file ? 'bg-primary/10 text-primary' : 'hover:bg-muted'
+                  }`}
+                >
+                  {file}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Code Editor */}
+          <div className="flex-1">
+            <Editor
+              height="100%"
+              defaultLanguage={
+                activeFile.endsWith('.html') ? 'html' :
+                activeFile.endsWith('.css') ? 'css' :
+                'javascript'
+              }
+              value={files[activeFile]}
+              onChange={(value) => setFiles(prev => ({
+                ...prev,
+                [activeFile]: value || ''
+              }))}
+              theme="vs-dark"
+              options={{
+                fontSize: 14,
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
+                wordWrap: 'on',
+                formatOnPaste: true,
+                formatOnType: true,
+              }}
+            />
+          </div>
         </div>
 
         {/* Preview and SEO Analysis */}
@@ -260,7 +345,7 @@ export default function EditorPage() {
                 >
                   <iframe
                     id="preview"
-                    srcDoc={code}
+                    srcDoc={files['index.html']}
                     className="w-full h-full border-0"
                     sandbox="allow-same-origin allow-scripts allow-modals allow-forms"
                     onLoad={() => setIsPreviewLoading(false)}
@@ -269,7 +354,7 @@ export default function EditorPage() {
               </div>
             </TabsContent>
             <TabsContent value="seo" className="flex-1 overflow-auto">
-              <SEOAnalyzer html={code} />
+              <SEOAnalyzer html={files['index.html']} />
             </TabsContent>
           </Tabs>
         </div>
