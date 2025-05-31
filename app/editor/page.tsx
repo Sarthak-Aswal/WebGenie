@@ -44,6 +44,7 @@ export default function EditorPage() {
   const [user, setUser] = useState<any>(null);
 
 
+
  
 
   useEffect(() => {
@@ -71,6 +72,7 @@ export default function EditorPage() {
           try {
             const template = JSON.parse(generatedTemplate);
             setCode(template.html);
+            setProjectId(template.projectId);
             setFileName(template.name || 'untitled.html');
           } catch (error) {
             console.error('Error parsing template:', error);
@@ -153,7 +155,7 @@ export default function EditorPage() {
     let nameToUse = fileName;
 
     // Ask for name if it's a new project and no name is set
-    if (!projectId && (!fileName || fileName.trim() === "untitled.html")) {
+    if (!projectId && (!fileName || fileName.trim() === "")) {
       const userInput = prompt("Enter a name for your project:");
       if (!userInput || userInput.trim() === "") {
         toast.error("Project name is required to save.");

@@ -76,6 +76,7 @@ const router = useRouter();
 const handleOpenInEditor = (project: Project) => {
   sessionStorage.setItem("generatedTemplate", JSON.stringify({
     html: project.html_code,
+    projectId:project.id,
     name: project.name,
   }));
   router.push("/editor");
