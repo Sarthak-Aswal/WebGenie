@@ -136,7 +136,7 @@ const deleteProject = async (id: string) => {
       {projects.length === 0 ? (
         <>
         <Player
-      src="/images/empty.lottie"  // place the .lottie file in public/animations
+      src="/lottie/empty.lottie"  // place the .lottie file in public/animations
       autoplay
       loop
       style={{ height: "300px", width: "300px" }}

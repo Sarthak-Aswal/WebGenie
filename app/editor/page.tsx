@@ -238,24 +238,7 @@ export default function EditorPage() {
     }
   };
 
-  const handleNewProject = () => {
-    if (code !== getEmptyTemplate() && !confirm('Are you sure? Unsaved changes will be lost.')) {
-      return;
-    }
-    setCode(getEmptyTemplate());
-    setFileName('untitled.html');
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="flex items-center gap-2">
-          <Loader2Icon className="h-6 w-6 animate-spin" />
-          <span>Loading editor...</span>
-        </div>
-      </div>
-    );
-  }
+ 
 
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -266,9 +249,7 @@ export default function EditorPage() {
             <Button variant="outline" onClick={() => router.push('/')}>
               Back to Generator
             </Button>
-            <Button variant="outline" onClick={handleNewProject}>
-              New Project
-            </Button>
+           
             
             <div className="border rounded-lg p-1 flex gap-1 bg-muted">
               <Button
