@@ -1,3 +1,5 @@
+
+"use client";
 interface SEOResult {
   score: number;
   suggestions: string[];
