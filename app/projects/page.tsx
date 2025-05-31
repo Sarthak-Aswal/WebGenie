@@ -1,73 +1,88 @@
 "use client";
-import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/supabase";
+
 import { useEffect, useState } from "react";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { supabase } from "@/lib/supabase";
+import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ClipLoader } from "react-spinners";
 
 type Project = {
   id: string;
+  userId: string;
   code: string;
   createdAt: string;
   updatedAt: string;
 };
 
 export default function ProjectsPage() {
-  const { scrollYProgress } = useScroll();
-  const yForeground = useTransform(scrollYProgress, [0, 1], ["0%", "-20%"]);
-  const yBackground = useTransform(scrollYProgress, [0, 1], ["0%", "30%"]);
-
+  const [user, setUser] = useState<any>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [user, setUser] = useState<{ id: string } | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    checkUserAndFetchProjects();
+    async function fetchUserAndProjects() {
+      setLoading(true);
+      setErrorMsg(null);
+      try {
+        const { data: sessionData, error: sessionError } =
+          await supabase.auth.getSession();
+
+        if (sessionError) {
+          console.error("Session error:", sessionError);
+          setErrorMsg("Error fetching session.");
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+
+        const user = sessionData?.session?.user ?? null;
+        if (!user) {
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+
+        setUser(user);
+
+        // Fetch projects for this user
+        const { data: projectsData, error: projectsError } = await supabase
+          .from("projects")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false });
+
+        if (projectsError) {
+          console.error("Error fetching projects:", projectsError);
+          setErrorMsg("Failed to fetch projects.");
+          setProjects([]);
+        } else {
+          setProjects(projectsData || []);
+        }
+      } catch (err) {
+        console.error("Unexpected error:", err);
+        setErrorMsg("Something went wrong.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchUserAndProjects();
   }, []);
-
-  const checkUserAndFetchProjects = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      setUser(null);
-      setLoading(false);
-      return;
-    }
-
-    setUser(user);
-
-    const { data, error } = await supabase
-      .from("projects")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("Error fetching projects:", error);
-    } else {
-      setProjects(data);
-    }
-
-    setLoading(false);
-  };
 
   const deleteProject = async (id: string) => {
     if (!confirm("Are you sure you want to delete this project?")) return;
-
-    setDeletingId(id);
-
-    const { error } = await supabase.from("projects").delete().eq("id", id);
-
-    if (error) {
-      alert("Failed to delete project: " + error.message);
-      setDeletingId(null);
-    } else {
-      setProjects((prev) => prev.filter((project) => project.id !== id));
-      setDeletingId(null);
+    try {
+      const { error } = await supabase.from("projects").delete().eq("id", id);
+      if (error) {
+        alert("Failed to delete project.");
+        console.error("Delete error:", error);
+        return;
+      }
+      setProjects((prev) => prev.filter((p) => p.id !== id));
+    } catch (err) {
+      console.error("Unexpected delete error:", err);
+      alert("Something went wrong during deletion.");
     }
   };
 
@@ -81,87 +96,62 @@ export default function ProjectsPage() {
 
   if (!user) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen px-4 text-center">
-        <h2 className="text-3xl font-bold mb-4">Please log in to see your projects</h2>
-        <p className="mb-6 text-muted-foreground max-w-md">
-          You need to be logged in to save and manage your projects.
+      <div className="flex flex-col items-center justify-center h-screen text-center p-4">
+        <p className="mb-4 text-lg">
+          You must be logged in to view and save projects.
         </p>
-        <Link href="/login" passHref>
-          <Button>Go to Login</Button>
+        <Link href="/login">
+          <Button>Login to start saving projects</Button>
         </Link>
       </div>
     );
   }
 
+  if (errorMsg) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-red-500">{errorMsg}</p>
+      </div>
+    );
+  }
+
   return (
-    <motion.div>
-      <main className="flex flex-col min-h-screen">
-        {/* Header Section */}
-        <motion.section className="relative overflow-hidden h-[40vh]">
-          <motion.div
-            style={{ y: yBackground }}
-            className="absolute inset-0 bg-[url('/images/examples-bg-3.jpg')] bg-cover bg-center opacity-40 dark:opacity-20"
-          />
-          <motion.div
-            style={{ y: yForeground }}
-            className="container px-4 md:px-6 relative z-10 h-full flex items-center justify-center"
-          >
-            <div className="flex flex-col items-center space-y-4 text-center">
-              <h1 className="text-4xl font-bold">Your Projects</h1>
-              <p className="text-muted-foreground">
-                View and manage all your saved projects.
-              </p>
-            </div>
-          </motion.div>
-        </motion.section>
+    <div className="container mx-auto py-12 px-4">
+      <h1 className="text-3xl font-bold mb-8">Your Projects</h1>
 
-        {/* Project Grid */}
-        <section className="py-12 md:py-24 bg-muted/50">
-          <div className="container px-4 md:px-6">
-            {projects.length === 0 ? (
-              <div className="text-center text-gray-500">No projects found.</div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-                {projects.map((project) => (
-                  <motion.div
-                    key={project.id}
-                    initial={{ opacity: 0, y: 40 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5 }}
-                    viewport={{ once: true }}
-                    className="flex flex-col space-y-3 rounded-lg border bg-card p-4 sm:p-6 shadow-sm"
-                  >
-                    <div className="text-sm text-muted-foreground">
-                      Created on:{" "}
-                      {new Date(project.createdAt).toLocaleDateString()}
-                    </div>
-                    <p className="line-clamp-3 text-sm">
-                      {project.code.length > 100
-                        ? project.code.slice(0, 100) + "..."
-                        : project.code}
-                    </p>
-
-                    <div className="flex space-x-3">
-                      <Link href={`/project/${project.id}`} passHref>
-                        <Button className="flex-1">Open</Button>
-                      </Link>
-
-                      <Button
-                        variant="destructive"
-                        className="flex-1"
-                        onClick={() => deleteProject(project.id)}
-                        disabled={deletingId === project.id}
-                      >
-                        {deletingId === project.id ? "Deleting..." : "Delete"}
-                      </Button>
-                    </div>
-                  </motion.div>
-                ))}
+      {projects.length === 0 ? (
+        <p>No projects found. Start creating one!</p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+          {projects.map((project) => (
+            <div
+              key={project.id}
+              className="border rounded-lg p-4 flex flex-col justify-between"
+            >
+              <div>
+                <h2 className="text-lg font-semibold mb-2">Project ID: {project.id}</h2>
+                <p className="text-sm text-gray-600 mb-4">
+                  Created at: {new Date(project.createdAt).toLocaleString()}
+                </p>
               </div>
-            )}
-          </div>
-        </section>
-      </main>
-    </motion.div>
+              <div className="flex gap-2">
+                <Link href={`/project/${project.id}`} passHref>
+                  <Button variant="outline" className="flex-grow">
+                    Open
+                  </Button>
+                </Link>
+                <Button
+                  variant="destructive"
+                  onClick={() => deleteProject(project.id)}
+                  className="flex-grow"
+                >
+                  Delete
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
