@@ -134,7 +134,7 @@ const deleteProject = async (id: string) => {
       <h1 className="text-3xl font-bold mb-8 text-center">Your Projects</h1>
 
       {projects.length === 0 ? (
-        <p>No projects found. Start creating one!</p>
+        <p className="text-2xl font-bold text-center">No projects found. Start creating one!</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
           {projects.map((project) => (
