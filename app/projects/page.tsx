@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ClipLoader } from "react-spinners";
 import { useRouter } from 'next/navigation';
-
+import { Player } from "@lottiefiles/react-lottie-player";
 type Project = {
   id: string;
   user_id: string;
@@ -134,7 +134,16 @@ const deleteProject = async (id: string) => {
       <h1 className="text-3xl font-bold mb-8 text-center">Your Projects</h1>
 
       {projects.length === 0 ? (
+        <>
+        <Player
+      src="/images/empty.lottie"  // place the .lottie file in public/animations
+      autoplay
+      loop
+      style={{ height: "300px", width: "300px" }}
+    />
         <p className="text-2xl font-bold text-center">No projects found. Start creating one!</p>
+        </>
+        
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
           {projects.map((project) => (
