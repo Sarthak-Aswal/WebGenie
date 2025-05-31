@@ -73,7 +73,7 @@ export default function EditorPage() {
             const template = JSON.parse(generatedTemplate);
             setCode(template.html);
             setProjectId(template.projectId);
-            setFileName(template.name || 'untitled.html');
+            setFileName(template.name );
           } catch (error) {
             console.error('Error parsing template:', error);
             setCode(getEmptyTemplate());
