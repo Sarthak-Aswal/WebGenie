@@ -7,7 +7,7 @@ import { Player } from "@lottiefiles/react-lottie-player";// or 'react-lottie-pl
 export default function ClientLottie() {
   return (
    <Player
-      src="/lottie/empty.lottie"  // place the .lottie file in public/animations
+      src="https://lottie.host/c98831ce-1f8b-406a-9d86-0bbad7aff19b/fH6AvOKMzh.lottie"  // place the .lottie file in public/animations
       autoplay
       loop
       style={{ height: "300px", width: "300px" }}
