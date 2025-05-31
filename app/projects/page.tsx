@@ -1,5 +1,5 @@
 "use client";
-
+import {toast} from "sonner";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -70,21 +70,23 @@ export default function ProjectsPage() {
     fetchUserAndProjects();
   }, []);
 
-  const deleteProject = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this project?")) return;
-    try {
-      const { error } = await supabase.from("projects").delete().eq("id", id);
-      if (error) {
-        alert("Failed to delete project.");
-        console.error("Delete error:", error);
-        return;
-      }
-      setProjects((prev) => prev.filter((p) => p.id !== id));
-    } catch (err) {
-      console.error("Unexpected delete error:", err);
-      alert("Something went wrong during deletion.");
+const deleteProject = async (id: string) => {
+  if (!confirm("Are you sure you want to delete this project?")) return;
+  try {
+    const { error } = await supabase.from("projects").delete().eq("id", id);
+    if (error) {
+      alert("Failed to delete project.");
+      console.error("Delete error:", error);
+      return;
     }
-  };
+    setProjects((prev) => prev.filter((p) => p.id !== id));
+    toast.success("Project deleted successfully");
+  } catch (err) {
+    console.error("Unexpected delete error:", err);
+    alert("Something went wrong during deletion.");
+  }
+};
+
 
   if (loading) {
     return (
