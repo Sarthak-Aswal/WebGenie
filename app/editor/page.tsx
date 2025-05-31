@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
+import { User } from '@supabase/supabase-js';
+
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
@@ -40,10 +42,15 @@ export default function EditorPage() {
   const [activeDevice, setActiveDevice] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
   const [isSaving, setIsSaving] = useState(false);
   const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+
+
   const supabase = createClientComponentClient();
 
   useEffect(() => {
     const loadInitialData = async () => {
+       console.log(user);
+       
       if (typeof window !== 'undefined') {
         const generatedTemplate = sessionStorage.getItem('generatedTemplate');
         
@@ -302,14 +309,16 @@ export default function EditorPage() {
               <RotateCwIcon className="mr-2 h-4 w-4" />
               Refresh
             </Button>
-            <Button onClick={handleSave} disabled={isSaving}>
-              {isSaving ? (
-                <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <SaveIcon className="mr-2 h-4 w-4" />
-              )}
-              Save
-            </Button>
+           {user && (
+  <Button onClick={handleSave} disabled={isSaving}>
+    {isSaving ? (
+      <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+    ) : (
+      <SaveIcon className="mr-2 h-4 w-4" />
+    )}
+    Save
+  </Button>
+)}
             <Button onClick={handleDownload}>
               <DownloadIcon className="mr-2 h-4 w-4" />
               Download
