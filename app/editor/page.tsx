@@ -19,7 +19,9 @@ const Tabs = dynamic(() => import('@/components/ui/tabs').then(mod => mod.Tabs))
 const TabsContent = dynamic(() => import('@/components/ui/tabs').then(mod => mod.TabsContent));
 const TabsList = dynamic(() => import('@/components/ui/tabs').then(mod => mod.TabsList));
 const TabsTrigger = dynamic(() => import('@/components/ui/tabs').then(mod => mod.TabsTrigger));
-const SEOAnalyzer = dynamic(() => import('@/components/seo-analyzer').then(mod => mod.SEOAnalyzer));
+const SEOAnalyzer = dynamic(() => import('@/components/SEOAnalyzer'), {
+  ssr: false,
+});
 
 // Dynamically import icons to prevent build errors
 const SaveIcon = dynamic(() => import('lucide-react').then(mod => mod.Save));

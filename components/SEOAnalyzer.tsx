@@ -8,7 +8,7 @@ interface SEOAnalyzerProps {
   html: string;
 }
 
-export function SEOAnalyzer({ html }: SEOAnalyzerProps) {
+export default function SEOAnalyzer({ html }: SEOAnalyzerProps) {
   const [analysis, setAnalysis] = useState<ReturnType<typeof analyzeSEO> | null>(null);
 
   useEffect(() => {
