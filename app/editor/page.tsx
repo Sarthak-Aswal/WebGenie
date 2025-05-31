@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-
+const [projectId, setProjectId] = useState<string | null>(null);
 // Dynamically import components to avoid SSR issues
 const Editor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
@@ -125,42 +125,65 @@ export default function EditorPage() {
     handleRefreshPreview();
   };
 
-  const handleSaveToCloud = async () => {
-    setIsSaving(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        await supabase.auth.signInWithOAuth({
-          provider: 'github',
-          options: {
-            redirectTo: `${window.location.origin}/auth/callback?next=/editor`
-          }
-        });
-        return;
-      }
+ const handleSaveToCloud = async () => {
+  setIsSaving(true);
+  try {
+    const {
+      data: { user }
+    } = await supabase.auth.getUser();
 
+    if (!user) {
+      await supabase.auth.signInWithOAuth({
+        provider: 'github',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback?next=/editor`
+        }
+      });
+      return;
+    }
+
+    let upsertData = {
+      user_id: user.id,
+      name: fileName,
+      html_code: code,
+      css_code: null,
+      js_code: null,
+      updated_at: new Date().toISOString()
+    };
+
+    if (projectId) {
+      // Update existing project by id
       const { data, error } = await supabase
         .from('projects')
-        .upsert({
-          name: fileName,
-          html_code: code,
-          user_id: user.id,
-          updated_at: new Date().toISOString()
-        })
-        .select();
+        .upsert({ id: projectId, ...upsertData })
+        .select()
+        .single();
 
       if (error) throw error;
 
+      toast.success('Project updated in cloud');
+      return data;
+    } else {
+      // Insert new project
+      const { data, error } = await supabase
+        .from('projects')
+        .insert(upsertData)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setProjectId(data.id);
       toast.success('Project saved to cloud');
-      return data[0];
-    } catch (error) {
-      console.error('Save error:', error);
-      toast.error('Failed to save to cloud');
-    } finally {
-      setIsSaving(false);
+      return data;
     }
-  };
+  } catch (error) {
+    console.error('Save error:', error);
+    toast.error('Failed to save to cloud');
+  } finally {
+    setIsSaving(false);
+  }
+};
 
   const handleSave = () => {
     if (typeof window !== 'undefined') {
