@@ -84,7 +84,7 @@ export default function Home() {
       const generatedHtml = await generateWithGemini(prompt);
       
       const template = {
-        name: prompt || "Generated Website",
+        name: "",
         html: generatedHtml
       };
       
