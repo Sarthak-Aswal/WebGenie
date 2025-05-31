@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import type { User } from '@supabase/supabase-js';
+
 // Dynamically import components to avoid SSR issues
 const Editor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
@@ -20,7 +20,7 @@ const TabsList = dynamic(() => import('@/components/ui/tabs').then(mod => mod.Ta
 const TabsTrigger = dynamic(() => import('@/components/ui/tabs').then(mod => mod.TabsTrigger));
 const SEOAnalyzer = dynamic(() => import('@/components/seo-analyzer').then(mod => mod.SEOAnalyzer));
 
-// Dynamically import icons
+// Dynamically import icons to prevent build errors
 const SaveIcon = dynamic(() => import('lucide-react').then(mod => mod.Save));
 const RotateCwIcon = dynamic(() => import('lucide-react').then(mod => mod.RotateCw));
 const Loader2Icon = dynamic(() => import('lucide-react').then(mod => mod.Loader2));
@@ -31,6 +31,7 @@ const MonitorIcon = dynamic(() => import('lucide-react').then(mod => mod.Monitor
 
 export default function EditorPage() {
   const [projectId, setProjectId] = useState<string | null>(null);
+
   const [code, setCode] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [isPreviewLoading, setIsPreviewLoading] = useState(true);
@@ -38,25 +39,14 @@ export default function EditorPage() {
   const [previewWidth, setPreviewWidth] = useState('100%');
   const [activeDevice, setActiveDevice] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
   const [isSaving, setIsSaving] = useState(false);
-   const [user, setUser] = useState<User | null>(null);  // <-- track user state
-
   const router = useRouter();
   const supabase = createClientComponentClient();
 
-  // Check user session on mount
   useEffect(() => {
-    const checkUser = async () => {
-      const {
-        data: { user }
-      } = await supabase.auth.getUser();
-      setUser(user);
-    };
-
-    checkUser();
-
     const loadInitialData = async () => {
       if (typeof window !== 'undefined') {
         const generatedTemplate = sessionStorage.getItem('generatedTemplate');
+        
         if (generatedTemplate) {
           try {
             const template = JSON.parse(generatedTemplate);
@@ -70,11 +60,12 @@ export default function EditorPage() {
           setCode(getEmptyTemplate());
         }
       }
+      
       setIsLoading(false);
     };
 
     loadInitialData();
-  }, [supabase]);
+  }, []);
 
   const getEmptyTemplate = () => {
     return `<!DOCTYPE html>
@@ -136,70 +127,15 @@ export default function EditorPage() {
     handleRefreshPreview();
   };
 
-  const handleSaveToCloud = async () => {
-    setIsSaving(true);
-    try {
-      // Check user again before saving (in case auth changed)
-      const {
-        data: { user }
-      } = await supabase.auth.getUser();
+ const handleSaveToCloud = async () => {
+  setIsSaving(true);
+  try {
+    const {
+      data: { user }
+    } = await supabase.auth.getUser();
 
-      if (!user) {
-        // Trigger login (choose any provider, e.g. GitHub)
-        await supabase.auth.signInWithOAuth({
-          provider: 'github', 
-          options: {
-            redirectTo: `${window.location.origin}/auth/callback?next=/editor`
-          }
-        });
-        return;
-      }
-
-      let upsertData = {
-        user_id: user.id,
-        name: fileName,
-        html_code: code,
-        css_code: null,
-        js_code: null,
-        updated_at: new Date().toISOString()
-      };
-
-      if (projectId) {
-        const { data, error } = await supabase
-          .from('projects')
-          .upsert({ id: projectId, ...upsertData })
-          .select()
-          .single();
-
-        if (error) throw error;
-
-        toast.success('Project updated in cloud');
-        return data;
-      } else {
-        const { data, error } = await supabase
-          .from('projects')
-          .insert(upsertData)
-          .select()
-          .single();
-
-        if (error) throw error;
-
-        setProjectId(data.id);
-        toast.success('Project saved to cloud');
-        return data;
-      }
-    } catch (error) {
-      console.error('Save error:', error);
-      toast.error('Failed to save to cloud');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleSave = () => {
     if (!user) {
-      // If no user, trigger login (Github for example)
-      supabase.auth.signInWithOAuth({
+      await supabase.auth.signInWithOAuth({
         provider: 'github',
         options: {
           redirectTo: `${window.location.origin}/auth/callback?next=/editor`
@@ -208,6 +144,50 @@ export default function EditorPage() {
       return;
     }
 
+    let upsertData = {
+      user_id: user.id,
+      name: fileName,
+      html_code: code,
+      css_code: null,
+      js_code: null,
+      updated_at: new Date().toISOString()
+    };
+
+    if (projectId) {
+      // Update existing project by id
+      const { data, error } = await supabase
+        .from('projects')
+        .upsert({ id: projectId, ...upsertData })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast.success('Project updated in cloud');
+      return data;
+    } else {
+      // Insert new project
+      const { data, error } = await supabase
+        .from('projects')
+        .insert(upsertData)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setProjectId(data.id);
+      toast.success('Project saved to cloud');
+      return data;
+    }
+  } catch (error) {
+    console.error('Save error:', error);
+    toast.error('Failed to save to cloud');
+  } finally {
+    setIsSaving(false);
+  }
+};
+
+  const handleSave = () => {
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem('lastSavedCode', code);
@@ -251,7 +231,7 @@ export default function EditorPage() {
         newIframe.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-modals allow-forms');
         newIframe.srcdoc = code;
         newIframe.onload = () => setIsPreviewLoading(false);
-
+        
         const container = iframe.parentElement;
         container?.removeChild(iframe);
         container?.appendChild(newIframe);
@@ -284,80 +264,115 @@ export default function EditorPage() {
         <div className="container mx-auto flex justify-between items-center">
           <h1 className="text-xl font-bold">WebGenie Editor</h1>
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={handleNewProject} title="New Project">
-              <RotateCwIcon className="h-4 w-4 mr-1" /> New
+            <Button variant="outline" onClick={() => router.push('/')}>
+              Back to Generator
             </Button>
-
-            {user && (
+            <Button variant="outline" onClick={handleNewProject}>
+              New Project
+            </Button>
+            
+            <div className="border rounded-lg p-1 flex gap-1 bg-muted">
               <Button
-                variant="default"
-                onClick={handleSave}
-                disabled={isSaving}
-                title="Save project"
+                variant={activeDevice === 'mobile' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => handleDeviceChange('mobile')}
+                className="px-3"
               >
-                {isSaving ? (
-                  <Loader2Icon className="h-4 w-4 animate-spin mr-1" />
-                ) : (
-                  <SaveIcon className="h-4 w-4 mr-1" />
-                )}
-                Save
+                <SmartphoneIcon className="h-4 w-4" />
               </Button>
-            )}
-
-            {!user && (
-              <Button variant="default" onClick={() => supabase.auth.signInWithOAuth({ provider: 'github' })}>
-                Sign in to Save
+              <Button
+                variant={activeDevice === 'tablet' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => handleDeviceChange('tablet')}
+                className="px-3"
+              >
+                <TabletIcon className="h-4 w-4" />
               </Button>
-            )}
+              <Button
+                variant={activeDevice === 'desktop' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => handleDeviceChange('desktop')}
+                className="px-3"
+              >
+                <MonitorIcon className="h-4 w-4" />
+              </Button>
+            </div>
 
-            <Button variant="outline" onClick={handleDownload} title="Download HTML">
-              <DownloadIcon className="h-4 w-4 mr-1" /> Download
+            <Button variant="outline" onClick={handleRefreshPreview}>
+              <RotateCwIcon className="mr-2 h-4 w-4" />
+              Refresh
+            </Button>
+            <Button onClick={handleSave} disabled={isSaving}>
+              {isSaving ? (
+                <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <SaveIcon className="mr-2 h-4 w-4" />
+              )}
+              Save
+            </Button>
+            <Button onClick={handleDownload}>
+              <DownloadIcon className="mr-2 h-4 w-4" />
+              Download
             </Button>
           </div>
         </div>
       </header>
-
-      <main className="flex flex-1 overflow-hidden">
-        <section className="flex flex-col w-1/2 border-r border-muted">
+      
+      <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
+        <div className="flex-1 border-r overflow-hidden">
           <Editor
             height="100%"
             defaultLanguage="html"
             value={code}
             onChange={(value) => setCode(value || '')}
-            options={{ fontSize: 14, minimap: { enabled: false } }}
+            theme="vs-dark"
+            options={{
+              fontSize: 14,
+              minimap: { enabled: false },
+              scrollBeyondLastLine: false,
+              automaticLayout: true,
+              wordWrap: 'on',
+              formatOnPaste: true,
+              formatOnType: true,
+            }}
           />
-        </section>
+        </div>
 
-        <section className="flex flex-col w-1/2 relative">
-          <div className="p-2 border-b border-muted flex items-center justify-between">
-            <Tabs value={activeDevice}  onValueChange={(value) => handleDeviceChange(value as 'mobile' | 'tablet' | 'desktop')}>
-              <TabsList>
-                <TabsTrigger value="mobile"><SmartphoneIcon className="inline-block h-4 w-4" /></TabsTrigger>
-                <TabsTrigger value="tablet"><TabletIcon className="inline-block h-4 w-4" /></TabsTrigger>
-                <TabsTrigger value="desktop"><MonitorIcon className="inline-block h-4 w-4" /></TabsTrigger>
-              </TabsList>
-            </Tabs>
-            <Button variant="outline" size="sm" onClick={handleRefreshPreview}>
-              Refresh Preview
-            </Button>
-          </div>
-
-          <div className="flex-1 overflow-auto bg-white" style={{ maxWidth: previewWidth, margin: 'auto' }}>
-            {isPreviewLoading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 z-10">
-                <Loader2Icon className="h-6 w-6 animate-spin" />
+        <div className="flex-1">
+          <Tabs defaultValue="preview" className="h-full flex flex-col">
+            <TabsList className="mx-4 mt-2">
+              <TabsTrigger value="preview">Preview</TabsTrigger>
+              <TabsTrigger value="seo">SEO Analysis</TabsTrigger>
+            </TabsList>
+            <TabsContent value="preview" className="flex-1">
+              <div className="h-full bg-gray-100 dark:bg-gray-900 flex items-start justify-center p-4">
+                {isPreviewLoading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10">
+                    <Loader2Icon className="h-8 w-8 animate-spin" />
+                  </div>
+                )}
+                <div 
+                  className="bg-white dark:bg-black h-full overflow-auto transition-all duration-300 shadow-lg"
+                  style={{ 
+                    width: previewWidth,
+                    maxWidth: '100%'
+                  }}
+                >
+                  <iframe
+                    id="preview"
+                    srcDoc={code}
+                    className="w-full h-full border-0"
+                    sandbox="allow-same-origin allow-scripts allow-modals allow-forms"
+                    onLoad={() => setIsPreviewLoading(false)}
+                  />
+                </div>
               </div>
-            )}
-            <iframe
-              id="preview"
-              className="w-full h-full border-0"
-              srcDoc={code}
-              sandbox="allow-same-origin allow-scripts allow-modals allow-forms"
-              onLoad={() => setIsPreviewLoading(false)}
-              title="Live Preview"
-            />
-          </div>
-        </section>
+            </TabsContent>
+            <TabsContent value="seo" className="flex-1 overflow-auto">
+              <SEOAnalyzer html={code} />
+            </TabsContent>
+          </Tabs>
+        </div>
       </main>
     </div>
   );
