@@ -4,7 +4,7 @@ import { Inter } from 'next/font/google';
 import { ThemeProvider } from '@/components/theme-provider';
 import Navbar from '@/components/navbar';
 import Footer from '@/components/Footer';
-
+import { Toaster } from 'sonner';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
@@ -27,7 +27,9 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <Navbar />
-          <div className="mt-16">{children}</div>
+          <div className="mt-16">{children}
+             <Toaster position="top-right" richColors />
+          </div>
           <Footer/>
         </ThemeProvider>
       </body>
