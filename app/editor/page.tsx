@@ -148,35 +148,48 @@ export default function EditorPage() {
   };
 
  const handleSaveToCloud = async () => {
-    setIsSaving(true);
-    try {
-      
+  setIsSaving(true);
+  try {
+    let nameToUse = fileName;
 
-      const upsertData = {
-        user_id: user.id,
-        name: fileName,
-        html_code: code,
-        updated_at: new Date().toISOString()
-      };
-
-      const { data, error } = projectId 
-        ? await supabase.from('projects').update(upsertData).eq('id', projectId)
-        : await supabase.from('projects').insert(upsertData).select();
-
-      if (error) throw error;
-
-      if (!projectId && data) {
-        setProjectId(data[0]?.id);
+    // Ask for name if it's a new project and no name is set
+    if (!projectId && (!fileName || fileName.trim() === "untitled.html")) {
+      const userInput = prompt("Enter a name for your project:");
+      if (!userInput || userInput.trim() === "") {
+        toast.error("Project name is required to save.");
+        setIsSaving(false);
+        return;
       }
-      
-      toast.success(projectId ? 'Project updated' : 'Project saved');
-    } catch (error) {
-      console.error('Save error:', error);
-      toast.error('Failed to save project');
-    } finally {
-      setIsSaving(false);
+      nameToUse = userInput.trim();
+      setFileName(nameToUse); // optional: update UI if fileName is state
     }
-  };
+
+    const upsertData = {
+      user_id: user.id,
+      name: nameToUse,
+      html_code: code,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data, error } = projectId
+      ? await supabase.from("projects").update(upsertData).eq("id", projectId)
+      : await supabase.from("projects").insert(upsertData).select();
+
+    if (error) throw error;
+
+    if (!projectId && data) {
+      setProjectId(data[0]?.id);
+    }
+
+    toast.success(projectId ? "Project updated" : "Project saved");
+  } catch (error) {
+    console.error("Save error:", error);
+    toast.error("Failed to save project");
+  } finally {
+    setIsSaving(false);
+  }
+};
+
 
   const handleSave = () => {
     localStorage.setItem('lastSavedCode', code);
