@@ -135,10 +135,10 @@ const deleteProject = async (id: string) => {
       <h1 className="text-3xl font-bold mb-8 text-center">Your Projects</h1>
 
       {projects.length === 0 ? (
-        <>
+        <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4 ">
         <LottieComponent />
         <p className="text-2xl font-bold text-center">No projects found. Start creating one!</p>
-        </>
+        </div>
         
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">

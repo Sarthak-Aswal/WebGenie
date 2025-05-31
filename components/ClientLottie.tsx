@@ -9,7 +9,7 @@ export default function ClientLottie() {
       src="https://lottie.host/c98831ce-1f8b-406a-9d86-0bbad7aff19b/fH6AvOKMzh.lottie"
       loop
       autoplay
-      style={{ width: '300px', height: '300px' }}
+      style={{ width: '350px', height: '350px' }}
     />
   );
   
