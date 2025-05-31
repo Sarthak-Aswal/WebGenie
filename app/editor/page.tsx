@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-const [projectId, setProjectId] = useState<string | null>(null);
+
 // Dynamically import components to avoid SSR issues
 const Editor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
@@ -30,6 +30,8 @@ const TabletIcon = dynamic(() => import('lucide-react').then(mod => mod.Tablet))
 const MonitorIcon = dynamic(() => import('lucide-react').then(mod => mod.Monitor));
 
 export default function EditorPage() {
+  const [projectId, setProjectId] = useState<string | null>(null);
+
   const [code, setCode] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [isPreviewLoading, setIsPreviewLoading] = useState(true);
