@@ -1,13 +1,33 @@
 "use client";
 import { useEffect, useState } from 'react';
-import Editor from '@monaco-editor/react';
-import { Button } from '@/components/ui/button';
-import { Save, RotateCw, Loader2, Download, Smartphone, Tablet, Monitor } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { SEOAnalyzer } from '@/components/seo-analyzer';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+
+// Dynamically import components to avoid SSR issues
+const Editor = dynamic(() => import('@monaco-editor/react'), {
+  ssr: false,
+  loading: () => <div className="flex items-center justify-center h-full">Loading editor...</div>
+});
+
+const Button = dynamic(() =>
+  import('@/components/ui/button').then(mod => mod.Button)
+);
+const Tabs = dynamic(() => import('@/components/ui/tabs').then(mod => mod.Tabs));
+const TabsContent = dynamic(() => import('@/components/ui/tabs').then(mod => mod.TabsContent));
+const TabsList = dynamic(() => import('@/components/ui/tabs').then(mod => mod.TabsList));
+const TabsTrigger = dynamic(() => import('@/components/ui/tabs').then(mod => mod.TabsTrigger));
+const SEOAnalyzer = dynamic(() => import('@/components/seo-analyzer').then(mod => mod.SEOAnalyzer));
+
+// Dynamically import icons to prevent build errors
+const SaveIcon = dynamic(() => import('lucide-react').then(mod => mod.Save));
+const RotateCwIcon = dynamic(() => import('lucide-react').then(mod => mod.RotateCw));
+const Loader2Icon = dynamic(() => import('lucide-react').then(mod => mod.Loader2));
+const DownloadIcon = dynamic(() => import('lucide-react').then(mod => mod.Download));
+const SmartphoneIcon = dynamic(() => import('lucide-react').then(mod => mod.Smartphone));
+const TabletIcon = dynamic(() => import('lucide-react').then(mod => mod.Tablet));
+const MonitorIcon = dynamic(() => import('lucide-react').then(mod => mod.Monitor));
 
 export default function EditorPage() {
   const [code, setCode] = useState<string>('');
@@ -22,19 +42,21 @@ export default function EditorPage() {
 
   useEffect(() => {
     const loadInitialData = async () => {
-      const generatedTemplate = sessionStorage.getItem('generatedTemplate');
-      
-      if (generatedTemplate) {
-        try {
-          const template = JSON.parse(generatedTemplate);
-          setCode(template.html);
-          setFileName(template.name || 'untitled.html');
-        } catch (error) {
-          console.error('Error parsing template:', error);
+      if (typeof window !== 'undefined') {
+        const generatedTemplate = sessionStorage.getItem('generatedTemplate');
+        
+        if (generatedTemplate) {
+          try {
+            const template = JSON.parse(generatedTemplate);
+            setCode(template.html);
+            setFileName(template.name || 'untitled.html');
+          } catch (error) {
+            console.error('Error parsing template:', error);
+            setCode(getEmptyTemplate());
+          }
+        } else {
           setCode(getEmptyTemplate());
         }
-      } else {
-        setCode(getEmptyTemplate());
       }
       
       setIsLoading(false);
@@ -106,11 +128,9 @@ export default function EditorPage() {
   const handleSaveToCloud = async () => {
     setIsSaving(true);
     try {
-      // Check if user is authenticated
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
-        // If not authenticated, redirect to login
         await supabase.auth.signInWithOAuth({
           provider: 'github',
           options: {
@@ -120,7 +140,6 @@ export default function EditorPage() {
         return;
       }
 
-      // Save to Supabase
       const { data, error } = await supabase
         .from('projects')
         .upsert({
@@ -144,51 +163,54 @@ export default function EditorPage() {
   };
 
   const handleSave = () => {
-    // Save locally as fallback
-    try {
-      localStorage.setItem('lastSavedCode', code);
-      toast.success('Code saved locally');
-    } catch (error) {
-      console.error('Local save error:', error);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('lastSavedCode', code);
+        toast.success('Code saved locally');
+      } catch (error) {
+        console.error('Local save error:', error);
+      }
     }
 
-    // Also try to save to cloud
     handleSaveToCloud();
   };
 
   const handleDownload = () => {
-    try {
-      const blob = new Blob([code], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      toast.success('File downloaded');
-    } catch (error) {
-      console.error('Download error:', error);
-      toast.error('Failed to download file');
+    if (typeof window !== 'undefined') {
+      try {
+        const blob = new Blob([code], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success('File downloaded');
+      } catch (error) {
+        console.error('Download error:', error);
+        toast.error('Failed to download file');
+      }
     }
   };
 
   const handleRefreshPreview = () => {
-    setIsPreviewLoading(true);
-    const iframe = document.getElementById('preview') as HTMLIFrameElement;
-    if (iframe) {
-      const newIframe = document.createElement('iframe');
-      newIframe.id = 'preview';
-      newIframe.className = 'w-full h-full border-0';
-      newIframe.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-modals allow-forms');
-
-      newIframe.srcdoc = code;
-      newIframe.onload = () => setIsPreviewLoading(false);
-      
-      const container = iframe.parentElement;
-      container?.removeChild(iframe);
-      container?.appendChild(newIframe);
+    if (typeof window !== 'undefined') {
+      setIsPreviewLoading(true);
+      const iframe = document.getElementById('preview') as HTMLIFrameElement;
+      if (iframe) {
+        const newIframe = document.createElement('iframe');
+        newIframe.id = 'preview';
+        newIframe.className = 'w-full h-full border-0';
+        newIframe.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-modals allow-forms');
+        newIframe.srcdoc = code;
+        newIframe.onload = () => setIsPreviewLoading(false);
+        
+        const container = iframe.parentElement;
+        container?.removeChild(iframe);
+        container?.appendChild(newIframe);
+      }
     }
   };
 
@@ -204,7 +226,7 @@ export default function EditorPage() {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="flex items-center gap-2">
-          <Loader2 className="h-6 w-6 animate-spin" />
+          <Loader2Icon className="h-6 w-6 animate-spin" />
           <span>Loading editor...</span>
         </div>
       </div>
@@ -231,7 +253,7 @@ export default function EditorPage() {
                 onClick={() => handleDeviceChange('mobile')}
                 className="px-3"
               >
-                <Smartphone className="h-4 w-4" />
+                <SmartphoneIcon className="h-4 w-4" />
               </Button>
               <Button
                 variant={activeDevice === 'tablet' ? 'default' : 'ghost'}
@@ -239,7 +261,7 @@ export default function EditorPage() {
                 onClick={() => handleDeviceChange('tablet')}
                 className="px-3"
               >
-                <Tablet className="h-4 w-4" />
+                <TabletIcon className="h-4 w-4" />
               </Button>
               <Button
                 variant={activeDevice === 'desktop' ? 'default' : 'ghost'}
@@ -247,24 +269,24 @@ export default function EditorPage() {
                 onClick={() => handleDeviceChange('desktop')}
                 className="px-3"
               >
-                <Monitor className="h-4 w-4" />
+                <MonitorIcon className="h-4 w-4" />
               </Button>
             </div>
 
             <Button variant="outline" onClick={handleRefreshPreview}>
-              <RotateCw className="mr-2 h-4 w-4" />
+              <RotateCwIcon className="mr-2 h-4 w-4" />
               Refresh
             </Button>
             <Button onClick={handleSave} disabled={isSaving}>
               {isSaving ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                <Save className="mr-2 h-4 w-4" />
+                <SaveIcon className="mr-2 h-4 w-4" />
               )}
               Save
             </Button>
             <Button onClick={handleDownload}>
-              <Download className="mr-2 h-4 w-4" />
+              <DownloadIcon className="mr-2 h-4 w-4" />
               Download
             </Button>
           </div>
@@ -272,7 +294,6 @@ export default function EditorPage() {
       </header>
       
       <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
-        {/* Editor */}
         <div className="flex-1 border-r overflow-hidden">
           <Editor
             height="100%"
@@ -289,11 +310,9 @@ export default function EditorPage() {
               formatOnPaste: true,
               formatOnType: true,
             }}
-            loading={<div className="flex items-center justify-center h-full">Loading editor...</div>}
           />
         </div>
 
-        {/* Preview and SEO Analysis */}
         <div className="flex-1">
           <Tabs defaultValue="preview" className="h-full flex flex-col">
             <TabsList className="mx-4 mt-2">
@@ -304,7 +323,7 @@ export default function EditorPage() {
               <div className="h-full bg-gray-100 dark:bg-gray-900 flex items-start justify-center p-4">
                 {isPreviewLoading && (
                   <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10">
-                    <Loader2 className="h-8 w-8 animate-spin" />
+                    <Loader2Icon className="h-8 w-8 animate-spin" />
                   </div>
                 )}
                 <div 
