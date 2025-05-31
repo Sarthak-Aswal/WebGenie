@@ -20,7 +20,8 @@ export default function Home() {
 
   const generateWithGemini = async (userPrompt: string) => {
     try {
-      const apiKey = process.env.GeminiApi;
+      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API; // must be prefixed with NEXT_PUBLIC_ to be accessible in client
+
 
       if (!apiKey) {
         throw new Error('API key is missing');
