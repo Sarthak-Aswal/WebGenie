@@ -85,8 +85,10 @@ export default function Home() {
       
       const template = {
         name: "",
+        projectId:"empty",
         html: generatedHtml
       };
+      console.log(template.name);
       
       sessionStorage.setItem('generatedTemplate', JSON.stringify(template));
       router.push('/editor');
