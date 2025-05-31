@@ -36,7 +36,7 @@ export default function EditorPage() {
   const [code, setCode] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [isPreviewLoading, setIsPreviewLoading] = useState(true);
-  const [fileName, setFileName] = useState('untitled.html');
+  const [fileName, setFileName] = useState('');
   const [previewWidth, setPreviewWidth] = useState('100%');
   const [activeDevice, setActiveDevice] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
   const [isSaving, setIsSaving] = useState(false);
