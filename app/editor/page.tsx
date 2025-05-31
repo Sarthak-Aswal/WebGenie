@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SEOAnalyzer } from '@/components/seo-analyzer';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 export default function EditorPage() {
   const [code, setCode] = useState<string>('');
@@ -15,24 +16,31 @@ export default function EditorPage() {
   const [fileName, setFileName] = useState('untitled.html');
   const [previewWidth, setPreviewWidth] = useState('100%');
   const [activeDevice, setActiveDevice] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
+  const [isSaving, setIsSaving] = useState(false);
   const router = useRouter();
+  const supabase = createClientComponentClient();
 
-    useEffect(() => {
-    const generatedTemplate = sessionStorage.getItem('generatedTemplate');
-    
-    if (generatedTemplate) {
-      try {
-        const template = JSON.parse(generatedTemplate);
-        setCode(template.html);
-      } catch (error) {
-        console.error('Error parsing template:', error);
+  useEffect(() => {
+    const loadInitialData = async () => {
+      const generatedTemplate = sessionStorage.getItem('generatedTemplate');
+      
+      if (generatedTemplate) {
+        try {
+          const template = JSON.parse(generatedTemplate);
+          setCode(template.html);
+          setFileName(template.name || 'untitled.html');
+        } catch (error) {
+          console.error('Error parsing template:', error);
+          setCode(getEmptyTemplate());
+        }
+      } else {
         setCode(getEmptyTemplate());
       }
-    } else {
-      setCode(getEmptyTemplate());
-    }
-    
-    setIsLoading(false);
+      
+      setIsLoading(false);
+    };
+
+    loadInitialData();
   }, []);
 
   const getEmptyTemplate = () => {
@@ -82,10 +90,10 @@ export default function EditorPage() {
     setActiveDevice(device);
     switch (device) {
       case 'mobile':
-        setPreviewWidth('375px'); // iPhone SE width
+        setPreviewWidth('375px');
         break;
       case 'tablet':
-        setPreviewWidth('768px'); // iPad Mini width
+        setPreviewWidth('768px');
         break;
       case 'desktop':
         setPreviewWidth('100%');
@@ -95,14 +103,57 @@ export default function EditorPage() {
     handleRefreshPreview();
   };
 
+  const handleSaveToCloud = async () => {
+    setIsSaving(true);
+    try {
+      // Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        // If not authenticated, redirect to login
+        await supabase.auth.signInWithOAuth({
+          provider: 'github',
+          options: {
+            redirectTo: `${window.location.origin}/auth/callback?next=/editor`
+          }
+        });
+        return;
+      }
+
+      // Save to Supabase
+      const { data, error } = await supabase
+        .from('projects')
+        .upsert({
+          name: fileName,
+          html_code: code,
+          user_id: user.id,
+          updated_at: new Date().toISOString()
+        })
+        .select();
+
+      if (error) throw error;
+
+      toast.success('Project saved to cloud');
+      return data[0];
+    } catch (error) {
+      console.error('Save error:', error);
+      toast.error('Failed to save to cloud');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSave = () => {
+    // Save locally as fallback
     try {
       localStorage.setItem('lastSavedCode', code);
       toast.success('Code saved locally');
     } catch (error) {
-      console.error('Save error:', error);
-      toast.error('Failed to save code');
+      console.error('Local save error:', error);
     }
+
+    // Also try to save to cloud
+    handleSaveToCloud();
   };
 
   const handleDownload = () => {
@@ -203,8 +254,12 @@ export default function EditorPage() {
               <RotateCw className="mr-2 h-4 w-4" />
               Refresh
             </Button>
-            <Button onClick={handleSave}>
-              <Save className="mr-2 h-4 w-4" />
+            <Button onClick={handleSave} disabled={isSaving}>
+              {isSaving ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="mr-2 h-4 w-4" />
+              )}
               Save
             </Button>
             <Button onClick={handleDownload}>
