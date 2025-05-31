@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ClipLoader } from "react-spinners";
 import { useRouter } from 'next/navigation';
-import { Player } from "@lottiefiles/react-lottie-player";
-type Project = {
+import dynamic from 'next/dynamic';type Project = {
   id: string;
   user_id: string;
    name:string;
@@ -15,7 +14,9 @@ type Project = {
   created_at: string;
   updated_at: string;
 };
-
+const LottieComponent = dynamic(() => import('@/components/ClientLottie'), {
+  ssr: false,
+});
 export default function ProjectsPage() {
   const [user, setUser] = useState<any>(null);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -135,12 +136,7 @@ const deleteProject = async (id: string) => {
 
       {projects.length === 0 ? (
         <>
-        <Player
-      src="/lottie/empty.lottie"  // place the .lottie file in public/animations
-      autoplay
-      loop
-      style={{ height: "300px", width: "300px" }}
-    />
+        <LottieComponent />
         <p className="text-2xl font-bold text-center">No projects found. Start creating one!</p>
         </>
         
