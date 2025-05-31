@@ -53,7 +53,7 @@ export default function Navbar() {
 
         {/* Desktop Navigation */}
         <div className="hidden md:flex md:items-center md:gap-6">
-          {["Features", "Examples", "Pricing", "About"].map((item) => (
+          {["Features", "Examples", "Projects", "About"].map((item) => (
             <motion.div
               key={item}
               whileHover={{ scale: 1.05 }}
