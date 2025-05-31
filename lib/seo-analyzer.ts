@@ -12,11 +12,26 @@ interface SEOResult {
 }
 
 export function analyzeSEO(html: string): SEOResult {
+  if (typeof window === 'undefined') {
+    return {
+      score: 0,
+      suggestions: ['SEO analysis only runs in the browser.'],
+      checks: {
+        title: false,
+        description: false,
+        headings: false,
+        images: false,
+        links: false,
+        keywords: false,
+      },
+    };
+  }
+
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
   const suggestions: string[] = [];
   let score = 100;
-  
+
   const checks = {
     title: false,
     description: false,
@@ -25,6 +40,9 @@ export function analyzeSEO(html: string): SEOResult {
     links: false,
     keywords: false,
   };
+
+  // (same checks as before...)
+
 
   // Check title
   const title = doc.querySelector('title');
