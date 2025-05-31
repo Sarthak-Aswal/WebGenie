@@ -9,7 +9,7 @@ import { ClipLoader } from "react-spinners";
 type Project = {
   id: string;
   user_id: string;
-
+   name:string;
   html_code: string;
   created_at: string;
   updated_at: string;
@@ -132,7 +132,7 @@ const deleteProject = async (id: string) => {
               className="border rounded-lg p-4 flex flex-col justify-between"
             >
               <div>
-                <h2 className="text-lg font-semibold mb-2">Project ID: {project.id}</h2>
+                <h2 className="text-lg font-semibold mb-2">Project Name: {project.name}</h2>
                 <p className="text-sm text-gray-600 mb-4">
                   Created at: {project.created_at.slice(0, 10)}
                 </p>
