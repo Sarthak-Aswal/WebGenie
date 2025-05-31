@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { User } from '@supabase/supabase-js';
 import { supabase } from "@/lib/supabase";
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -45,7 +44,7 @@ export default function EditorPage() {
   const [user, setUser] = useState<any>(null);
 
 
-  const supabase = createClientComponentClient();
+ 
 
   useEffect(() => {
      const checkUser = async () => {
