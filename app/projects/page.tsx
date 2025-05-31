@@ -8,10 +8,11 @@ import { ClipLoader } from "react-spinners";
 
 type Project = {
   id: string;
-  userId: string;
-  code: string;
-  createdAt: string;
-  updatedAt: string;
+  user_id: string;
+
+  html_code: string;
+  created_at: string;
+  updated_at: string;
 };
 
 export default function ProjectsPage() {
