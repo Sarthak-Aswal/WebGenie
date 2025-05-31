@@ -44,7 +44,7 @@ export default function ProjectsPage() {
       .from("projects")
       .select("*")
       .eq("user_id", user.id)
-      .order("createdAt", { ascending: false });
+      .order("created_at", { ascending: false });
 
     if (error) {
       console.error("Error fetching projects:", error);
