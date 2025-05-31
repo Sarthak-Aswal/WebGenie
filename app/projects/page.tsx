@@ -114,7 +114,7 @@ const deleteProject = async (id: string) => {
         <p className="mb-4 text-lg">
           You must be logged in to view and save projects.
         </p>
-        <Link href="/login">
+        <Link href="/auth/login">
           <Button>Login to start saving projects</Button>
         </Link>
       </div>
@@ -130,8 +130,8 @@ const deleteProject = async (id: string) => {
   }
 
   return (
-    <div className="container mx-auto py-12 px-4">
-      <h1 className="text-3xl font-bold mb-8">Your Projects</h1>
+    <div className="container height mx-auto py-12 px-4" style={{ height: "calc(100vh - 65px)" }}>
+      <h1 className="text-3xl font-bold mb-8 text-center">Your Projects</h1>
 
       {projects.length === 0 ? (
         <p>No projects found. Start creating one!</p>
