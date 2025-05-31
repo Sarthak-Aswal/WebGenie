@@ -181,7 +181,8 @@ export default function EditorPage() {
       const newIframe = document.createElement('iframe');
       newIframe.id = 'preview';
       newIframe.className = 'w-full h-full border-0';
-      newIframe.sandbox = 'allow-same-origin allow-scripts allow-modals allow-forms';
+      newIframe.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-modals allow-forms');
+
       newIframe.srcdoc = code;
       newIframe.onload = () => setIsPreviewLoading(false);
       
