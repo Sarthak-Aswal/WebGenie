@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { User } from '@supabase/supabase-js';
-
+import { supabase } from "@/lib/supabase";
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
@@ -42,12 +42,25 @@ export default function EditorPage() {
   const [activeDevice, setActiveDevice] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
   const [isSaving, setIsSaving] = useState(false);
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any>(null);
 
 
   const supabase = createClientComponentClient();
 
   useEffect(() => {
+     const checkUser = async () => {
+          const { data } = await supabase.auth.getSession();
+          setUser(data.session?.user || null);
+        };
+    
+        checkUser();
+    
+        // Listen for auth changes (login/logout)
+        const { data: authListener } = supabase.auth.onAuthStateChange(
+          (_event, session) => {
+            setUser(session?.user || null);
+          }
+        );
     const loadInitialData = async () => {
        console.log(user);
        
