@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import { supabase } from "@/lib/supabase";
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+
 
 // Dynamically import components to avoid SSR issues
 const Editor = dynamic(() => import('@monaco-editor/react'), {
@@ -50,6 +50,7 @@ export default function EditorPage() {
      const checkUser = async () => {
           const { data } = await supabase.auth.getSession();
           setUser(data.session?.user || null);
+          console.log(user);
         };
     
         checkUser();
@@ -61,7 +62,7 @@ export default function EditorPage() {
           }
         );
     const loadInitialData = async () => {
-       console.log(user);
+       
        
       if (typeof window !== 'undefined') {
         const generatedTemplate = sessionStorage.getItem('generatedTemplate');
