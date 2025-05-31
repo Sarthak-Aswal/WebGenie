@@ -1,3 +1,4 @@
+"use client";
 import { useEffect, useState } from 'react';
 import { analyzeSEO } from '@/lib/seo-analyzer';
 import { Progress } from '@/components/ui/progress';
