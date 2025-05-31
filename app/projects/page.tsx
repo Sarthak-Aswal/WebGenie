@@ -134,7 +134,7 @@ const deleteProject = async (id: string) => {
               <div>
                 <h2 className="text-lg font-semibold mb-2">Project ID: {project.id}</h2>
                 <p className="text-sm text-gray-600 mb-4">
-                  Created at: {project.createdAt.slice(0, 10)}
+                  Created at: {project.created_at.slice(0, 10)}
                 </p>
               </div>
               <div className="flex gap-2">
