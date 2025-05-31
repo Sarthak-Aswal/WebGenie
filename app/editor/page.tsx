@@ -148,75 +148,39 @@ export default function EditorPage() {
   };
 
  const handleSaveToCloud = async () => {
-  setIsSaving(true);
-  try {
-    const {
-      data: { user }
-    } = await supabase.auth.getUser();
+    setIsSaving(true);
+    try {
+      
 
-    if (!user) {
-      await supabase.auth.signInWithOAuth({
-        provider: 'github',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback?next=/editor`
-        }
-      });
-      return;
-    }
+      const upsertData = {
+        user_id: user.id,
+        name: fileName,
+        html_code: code,
+        updated_at: new Date().toISOString()
+      };
 
-    let upsertData = {
-      user_id: user.id,
-      name: fileName,
-      html_code: code,
-      css_code: null,
-      js_code: null,
-      updated_at: new Date().toISOString()
-    };
-
-    if (projectId) {
-      // Update existing project by id
-      const { data, error } = await supabase
-        .from('projects')
-        .upsert({ id: projectId, ...upsertData })
-        .select()
-        .single();
+      const { data, error } = projectId 
+        ? await supabase.from('projects').update(upsertData).eq('id', projectId)
+        : await supabase.from('projects').insert(upsertData).select();
 
       if (error) throw error;
 
-      toast.success('Project updated in cloud');
-      return data;
-    } else {
-      // Insert new project
-      const { data, error } = await supabase
-        .from('projects')
-        .insert(upsertData)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      setProjectId(data.id);
-      toast.success('Project saved to cloud');
-      return data;
+      if (!projectId && data) {
+        setProjectId(data[0]?.id);
+      }
+      
+      toast.success(projectId ? 'Project updated' : 'Project saved');
+    } catch (error) {
+      console.error('Save error:', error);
+      toast.error('Failed to save project');
+    } finally {
+      setIsSaving(false);
     }
-  } catch (error) {
-    console.error('Save error:', error);
-    toast.error('Failed to save to cloud');
-  } finally {
-    setIsSaving(false);
-  }
-};
+  };
 
   const handleSave = () => {
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('lastSavedCode', code);
-        toast.success('Code saved locally');
-      } catch (error) {
-        console.error('Local save error:', error);
-      }
-    }
-
+    localStorage.setItem('lastSavedCode', code);
+    toast.success('Code saved locally');
     handleSaveToCloud();
   };
 

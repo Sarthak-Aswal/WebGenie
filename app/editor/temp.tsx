@@ -1,9 +1,10 @@
 "use client";
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
+import { supabase } from "@/lib/supabase";
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+
 
 // Dynamically import components to avoid SSR issues
 const Editor = dynamic(() => import('@monaco-editor/react'), {
@@ -40,10 +41,29 @@ export default function EditorPage() {
   const [activeDevice, setActiveDevice] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
   const [isSaving, setIsSaving] = useState(false);
   const router = useRouter();
-  const supabase = createClientComponentClient();
+  const [user, setUser] = useState<any>(null);
+
+
+ 
 
   useEffect(() => {
+     const checkUser = async () => {
+          const { data } = await supabase.auth.getSession();
+          setUser(data.session?.user || null);
+          console.log(user);
+        };
+    
+        checkUser();
+    
+        // Listen for auth changes (login/logout)
+        const { data: authListener } = supabase.auth.onAuthStateChange(
+          (_event, session) => {
+            setUser(session?.user || null);
+          }
+        );
     const loadInitialData = async () => {
+       
+       
       if (typeof window !== 'undefined') {
         const generatedTemplate = sessionStorage.getItem('generatedTemplate');
         
@@ -302,14 +322,16 @@ export default function EditorPage() {
               <RotateCwIcon className="mr-2 h-4 w-4" />
               Refresh
             </Button>
-            <Button onClick={handleSave} disabled={isSaving}>
-              {isSaving ? (
-                <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <SaveIcon className="mr-2 h-4 w-4" />
-              )}
-              Save
-            </Button>
+           {user && (
+  <Button onClick={handleSave} disabled={isSaving}>
+    {isSaving ? (
+      <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+    ) : (
+      <SaveIcon className="mr-2 h-4 w-4" />
+    )}
+    Save
+  </Button>
+)}
             <Button onClick={handleDownload}>
               <DownloadIcon className="mr-2 h-4 w-4" />
               Download
