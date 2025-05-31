@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ClipLoader } from "react-spinners";
-import {parsePostgresTimestamp} from "@/lib/dateFunction";
+
 type Project = {
   id: string;
   userId: string;
@@ -131,7 +131,7 @@ export default function ProjectsPage() {
               <div>
                 <h2 className="text-lg font-semibold mb-2">Project ID: {project.id}</h2>
                 <p className="text-sm text-gray-600 mb-4">
-                  Created at: {parsePostgresTimestamp(project.createdAt)?.toLocaleString() ?? "Invalid date"}
+                  Created at: {project.createdAt.slice(0, 10)}
                 </p>
               </div>
               <div className="flex gap-2">
