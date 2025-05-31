@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ClipLoader } from "react-spinners";
+import { useRouter } from 'next/navigation';
 
 type Project = {
   id: string;
@@ -70,6 +71,15 @@ export default function ProjectsPage() {
 
     fetchUserAndProjects();
   }, []);
+const router = useRouter();
+
+const handleOpenInEditor = (project: Project) => {
+  sessionStorage.setItem("generatedTemplate", JSON.stringify({
+    html: project.html_code,
+    name: project.name,
+  }));
+  router.push("/editor");
+};
 
 const deleteProject = async (id: string) => {
   if (!confirm("Are you sure you want to delete this project?")) return;
@@ -138,19 +148,22 @@ const deleteProject = async (id: string) => {
                 </p>
               </div>
               <div className="flex gap-2">
-                <Link href={`/project/${project.id}`} passHref>
-                  <Button variant="outline" className="flex-grow">
-                    Open
-                  </Button>
-                </Link>
-                <Button
-                  variant="destructive"
-                  onClick={() => deleteProject(project.id)}
-                  className="flex-grow"
-                >
-                  Delete
-                </Button>
-              </div>
+  <Button
+    variant="outline"
+    onClick={() => handleOpenInEditor(project)}
+    className="flex-grow"
+  >
+    Open in Editor
+  </Button>
+  <Button
+    variant="destructive"
+    onClick={() => deleteProject(project.id)}
+    className="flex-grow"
+  >
+    Delete
+  </Button>
+</div>
+
             </div>
           ))}
         </div>
