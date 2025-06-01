@@ -63,7 +63,7 @@ export default function Home() {
       if (!generatedText.includes('<!DOCTYPE html>') || !generatedText.includes('<html')) {
         throw new Error('Invalid HTML generated');
       }
-
+      
       return generatedText;
     } catch (err) {
       console.error("Generation error:", err);
@@ -82,7 +82,7 @@ export default function Home() {
 
     try {
       const generatedHtml = await generateWithGemini(prompt);
-      
+      console.log(generatedHtml);
       const template = {
         name: "",
         projectId:null,
