@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, JSXElementConstructor, Key, PromiseLikeOfReactNode, ReactElement, ReactNode, ReactPortal } from 'react';
 import dynamic from 'next/dynamic';
 import { supabase } from "@/lib/supabase";
 import { useRouter } from 'next/navigation';
@@ -34,131 +34,140 @@ const Progress = dynamic(
   () => import('@/components/ui/progress').then(mod => mod.Progress),
   { ssr: false }
 );
+const CustomProgressBar = ({ value }: { value: number }) => {
+  return (
+    <div className="w-full bg-gray-200 rounded-full h-2.5">
+      <div 
+        className="bg-blue-600 h-2.5 rounded-full" 
+        style={{ width: `${value}%` }}
+      ></div>
+    </div>
+  );
+};
 
-const XCircle = dynamic(() => import('lucide-react').then(mod => mod.XCircle));
-export default function EditorPage() {
-  const [projectId, setProjectId] = useState<string | null>(null);
-  const [code, setCode] = useState<string>('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [isPreviewLoading, setIsPreviewLoading] = useState(true);
-  const [fileName, setFileName] = useState('');
-  const [previewWidth, setPreviewWidth] = useState('100%');
-  const [activeDevice, setActiveDevice] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
-  const [isSaving, setIsSaving] = useState(false);
-  const [aiPrompt, setAiPrompt] = useState('');
-  const [isAiProcessing, setIsAiProcessing] = useState(false);
-  const router = useRouter();
-  const [user, setUser] = useState<any>(null);
+// SEOAnalyzer component with custom progress bar
 const SEOAnalyzer = ({ html }: { html: string }) => {
   const [analysis, setAnalysis] = useState<any>(null);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
     const analyzeSEO = (html: string) => {
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, 'text/html');
-      const suggestions: string[] = [];
-      let score = 100;
+      try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const suggestions: string[] = [];
+        let score = 100;
 
-      const checks = {
-        title: false,
-        description: false,
-        headings: false,
-        images: false,
-        links: false,
-        keywords: false,
-      };
+        const checks = {
+          title: false,
+          description: false,
+          headings: false,
+          images: false,
+          links: false,
+          keywords: false,
+        };
 
-      // Title check
-      const title = doc.querySelector('title');
-      if (!title || !title.textContent) {
-        suggestions.push('Add a title tag to your page');
-        score -= 15;
-      } else if (title.textContent.length < 30 || title.textContent.length > 60) {
-        suggestions.push('Title length should be between 30-60 characters');
-        score -= 10;
-        checks.title = true;
-      } else {
-        checks.title = true;
-      }
+        // Title check
+        const title = doc.querySelector('title');
+        if (!title || !title.textContent) {
+          suggestions.push('Add a title tag to your page');
+          score -= 15;
+        } else if (title.textContent.length < 30 || title.textContent.length > 60) {
+          suggestions.push('Title length should be between 30-60 characters');
+          score -= 10;
+          checks.title = true;
+        } else {
+          checks.title = true;
+        }
 
-      // Description check
-      const metaDescription = doc.querySelector('meta[name="description"]');
-      if (!metaDescription || !metaDescription.getAttribute('content')) {
-        suggestions.push('Add a meta description');
-        score -= 15;
-      } else if (metaDescription.getAttribute('content')!.length < 120 || metaDescription.getAttribute('content')!.length > 160) {
-        suggestions.push('Meta description length should be between 120-160 characters');
-        score -= 10;
-        checks.description = true;
-      } else {
-        checks.description = true;
-      }
-
-      // Headings check
-      const h1 = doc.querySelectorAll('h1');
-      if (h1.length === 0) {
-        suggestions.push('Add an H1 heading');
-        score -= 10;
-      } else if (h1.length > 1) {
-        suggestions.push('Use only one H1 heading per page');
-        score -= 5;
-      } else {
-        checks.headings = true;
-      }
-
-      // Images check
-      const images = doc.querySelectorAll('img');
-      let hasImageIssues = false;
-      images.forEach(img => {
-        if (!img.getAttribute('alt')) {
-          if (!hasImageIssues) {
-            suggestions.push('Add alt text to all images');
+        // Description check
+        const metaDescription = doc.querySelector('meta[name="description"]');
+        if (!metaDescription || !metaDescription.getAttribute('content')) {
+          suggestions.push('Add a meta description');
+          score -= 15;
+        } else {
+          const descLength = metaDescription.getAttribute('content')!.length;
+          if (descLength < 120 || descLength > 160) {
+            suggestions.push('Meta description length should be between 120-160 characters');
             score -= 10;
-            hasImageIssues = true;
           }
+          checks.description = true;
         }
-      });
-      if (!hasImageIssues) checks.images = true;
 
-      // Links check
-      const links = doc.querySelectorAll('a');
-      let hasLinkIssues = false;
-      links.forEach(link => {
-        if (!link.textContent?.trim()) {
-          if (!hasLinkIssues) {
-            suggestions.push('Ensure all links have descriptive text');
-            score -= 5;
-            hasLinkIssues = true;
+        // Headings check
+        const h1 = doc.querySelectorAll('h1');
+        if (h1.length === 0) {
+          suggestions.push('Add an H1 heading');
+          score -= 10;
+        } else if (h1.length > 1) {
+          suggestions.push('Use only one H1 heading per page');
+          score -= 5;
+        }
+        checks.headings = h1.length === 1;
+
+        // Images check
+        const images = doc.querySelectorAll('img');
+        let hasImageIssues = false;
+        images.forEach(img => {
+          if (!img.getAttribute('alt')) {
+            if (!hasImageIssues) {
+              suggestions.push('Add alt text to all images');
+              score -= 10;
+              hasImageIssues = true;
+            }
           }
-        }
-      });
-      if (!hasLinkIssues) checks.links = true;
+        });
+        checks.images = !hasImageIssues;
 
-      // Content check
-      const bodyText = doc.body.textContent || '';
-      if (bodyText.length < 300) {
-        suggestions.push('Add more content to improve keyword density');
-        score -= 10;
-      } else {
-        checks.keywords = true;
+        // Links check
+        const links = doc.querySelectorAll('a');
+        let hasLinkIssues = false;
+        links.forEach(link => {
+          if (!link.textContent?.trim()) {
+            if (!hasLinkIssues) {
+              suggestions.push('Ensure all links have descriptive text');
+              score -= 5;
+              hasLinkIssues = true;
+            }
+          }
+        });
+        checks.links = !hasLinkIssues;
+
+        // Content check
+        const bodyText = doc.body.textContent || '';
+        if (bodyText.length < 300) {
+          suggestions.push('Add more content to improve keyword density');
+          score -= 10;
+        }
+        checks.keywords = bodyText.length >= 300;
+
+        score = Math.max(0, Math.min(100, score));
+
+        setAnalysis({
+          score,
+          suggestions,
+          checks,
+        });
+      } catch (error) {
+        console.error("SEO Analysis error:", error);
+        setAnalysis({
+          score: 0,
+          suggestions: ['Failed to analyze SEO. Please check your HTML syntax.'],
+          checks: {
+            title: false,
+            description: false,
+            headings: false,
+            images: false,
+            links: false,
+            keywords: false,
+          }
+        });
       }
-
-      score = Math.max(0, Math.min(100, score));
-
-      return {
-        score,
-        suggestions,
-        checks,
-      };
     };
 
-    const result = analyzeSEO(html);
-    setAnalysis(result);
+    analyzeSEO(html);
   }, [html]);
 
-  if (!analysis) return <div className="flex items-center justify-center h-full">Analyzing...</div>;
+  if (!analysis) return <div className="flex items-center justify-center h-full">Analyzing SEO...</div>;
 
   return (
     <div className="p-4 space-y-4">
@@ -167,9 +176,7 @@ const SEOAnalyzer = ({ html }: { html: string }) => {
           <h3 className="text-lg font-semibold">SEO Score</h3>
           <span className="text-2xl font-bold">{analysis.score}%</span>
         </div>
-       
-          
-       
+        <CustomProgressBar value={analysis.score} />
       </div>
 
       <div className="space-y-4">
@@ -192,7 +199,7 @@ const SEOAnalyzer = ({ html }: { html: string }) => {
         <div className="space-y-2">
           <h4 className="font-medium">Suggestions</h4>
           <ul className="space-y-1 text-sm">
-            {analysis.suggestions.map((suggestion: string, index: number) => (
+            {analysis.suggestions.map((suggestion: string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | PromiseLikeOfReactNode | null | undefined, index: Key | null | undefined) => (
               <li key={index} className="text-muted-foreground">
                 • {suggestion}
               </li>
@@ -203,6 +210,21 @@ const SEOAnalyzer = ({ html }: { html: string }) => {
     </div>
   );
 };
+const XCircle = dynamic(() => import('lucide-react').then(mod => mod.XCircle));
+export default function EditorPage() {
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [code, setCode] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(true);
+  const [fileName, setFileName] = useState('');
+  const [previewWidth, setPreviewWidth] = useState('100%');
+  const [activeDevice, setActiveDevice] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
+  const [isSaving, setIsSaving] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [isAiProcessing, setIsAiProcessing] = useState(false);
+  const router = useRouter();
+  const [user, setUser] = useState<any>(null);
+
   useEffect(() => {
     const checkUser = async () => {
       const { data } = await supabase.auth.getSession();
