@@ -306,27 +306,7 @@ export default function EditorPage() {
               Back to Generator
             </Button>
             
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={aiPrompt}
-                onChange={(e) => setAiPrompt(e.target.value)}
-                placeholder="Ask AI to modify code..."
-                className="px-3 py-2 border rounded-md text-sm w-64"
-                onKeyDown={(e) => e.key === 'Enter' && handleAiEdit()}
-              />
-              <Button 
-                onClick={handleAiEdit}
-                disabled={isAiProcessing}
-              >
-                {isAiProcessing ? (
-                  <Loader2Icon className="h-4 w-4 animate-spin" />
-                ) : (
-                  <SparklesIcon className="h-4 w-4" />
-                )}
-                Apply
-              </Button>
-            </div>
+           
 
             <div className="border rounded-lg p-1 flex gap-1 bg-muted">
               <Button
@@ -396,6 +376,27 @@ export default function EditorPage() {
             }}
           />
         </div>
+         <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                placeholder="Ask AI to modify code..."
+                className="px-3 py-2 border rounded-md text-sm w-64"
+                onKeyDown={(e) => e.key === 'Enter' && handleAiEdit()}
+              />
+              <Button 
+                onClick={handleAiEdit}
+                disabled={isAiProcessing}
+              >
+                {isAiProcessing ? (
+                  <Loader2Icon className="h-4 w-4 animate-spin" />
+                ) : (
+                  <SparklesIcon className="h-4 w-4" />
+                )}
+                Apply
+              </Button>
+            </div>
 
         <div className="flex-1">
           <Tabs defaultValue="preview" className="h-full flex flex-col">
