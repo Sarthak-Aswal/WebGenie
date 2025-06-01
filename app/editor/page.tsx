@@ -49,7 +49,7 @@ export default function EditorPage() {
   const editorRef = useRef<any>(null);
 
   // Initialize Gemini AI
-  const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY || '');
+  const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API || '');
 
   useEffect(() => {
     const checkUser = async () => {
