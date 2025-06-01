@@ -414,15 +414,7 @@ export default function EditorPage() {
       }
     }
   };
-const enhancedCode = `
-  ${code}
-  <script>
-    document.querySelectorAll('a').forEach(a => {
-      a.setAttribute('target', '_blank');
-      a.setAttribute('rel', 'noopener noreferrer');
-    });
-  </script>
-`;
+
 
 
 
@@ -620,7 +612,7 @@ const enhancedCode = `
               </div>
             </TabsContent>
             <TabsContent value="seo" className="flex-1 overflow-auto">
-              <SEOAnalyzer html={enhancedCode} />
+              <SEOAnalyzer html={code} />
             </TabsContent>
           </Tabs>
         </div>
