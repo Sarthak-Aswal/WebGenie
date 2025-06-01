@@ -18,7 +18,12 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex flex-col h-screen justify-center items-center bg-white dark:bg-black transition-colors duration-300">
+    <div className="flex flex-col h-screen justify-center items-center bg-white dark:bg-black transition-colors duration-300" style={{
+        backgroundImage: "url('/images/login-hero.jpg')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }}>
       <Card className="w-full max-w-md p-4 border border-gray-300 dark:border-gray-600 shadow-md bg-white dark:bg-black text-black dark:text-white">
         <CardHeader>
           <CardTitle className="text-center mb-6 text-lg lg:text-2xl font-bold">
