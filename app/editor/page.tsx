@@ -4,7 +4,8 @@ import dynamic from 'next/dynamic';
 import { supabase } from "@/lib/supabase";
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-
+import { RealtimeChannel } from '@supabase/supabase-js';
+import { useDebounce } from 'use-debounce';
 // Dynamically import components to avoid SSR issues
 const Editor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
@@ -30,10 +31,120 @@ const TabletIcon = dynamic(() => import('lucide-react').then(mod => mod.Tablet))
 const MonitorIcon = dynamic(() => import('lucide-react').then(mod => mod.Monitor));
 const SparklesIcon = dynamic(() => import('lucide-react').then(mod => mod.Sparkles));
 const CheckCircle2 = dynamic(() => import('lucide-react').then(mod => mod.CheckCircle2));
+const UserPlus = dynamic(() => import('lucide-react').then(mod => mod.UserPlus));
+const Users = dynamic(() => import('lucide-react').then(mod => mod.Users));
 const Progress = dynamic(
   () => import('@/components/ui/progress').then(mod => mod.Progress),
   { ssr: false }
 );
+const CollaboratorsList = ({ 
+  collaborators,
+  onInviteClick
+}: { 
+  collaborators: {id: string, email: string}[],
+  onInviteClick: () => void
+}) => {
+  return (
+    <div className="absolute bottom-4 right-4 bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg z-50 border">
+      <div className="flex items-center justify-between mb-2">
+        <h4 className="text-sm font-medium">Collaborators</h4>
+        <button 
+          onClick={onInviteClick}
+          className="text-xs p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+          title="Invite collaborators"
+        >
+          <UserPlus className="h-4 w-4" />
+        </button>
+      </div>
+      <div className="space-y-2 max-h-60 overflow-y-auto">
+        {collaborators.length > 0 ? (
+          collaborators.map((collaborator) => (
+            <div key={collaborator.id} className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-green-500"></div>
+              <span className="text-sm">{collaborator.email}</span>
+            </div>
+          ))
+        ) : (
+          <div className="text-sm text-muted-foreground">No other collaborators</div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const InviteCollaboratorModal = ({
+  projectId,
+  onClose,
+  onInvite
+}: {
+  projectId: string,
+  onClose: () => void,
+  onInvite: (email: string) => Promise<void>
+}) => {
+  const [email, setEmail] = useState('');
+  const [isInviting, setIsInviting] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) {
+      setError('Email is required');
+      return;
+    }
+    setIsInviting(true);
+    try {
+      await onInvite(email);
+      setEmail('');
+      setError('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to invite user');
+    } finally {
+      setIsInviting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg max-w-md w-full">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold">Invite Collaborator</h3>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            &times;
+          </button>
+        </div>
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1">User Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-3 py-2 border rounded-md"
+              placeholder="Enter user's email"
+            />
+            {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 border rounded-md"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isInviting}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md disabled:opacity-50"
+            >
+              {isInviting ? 'Inviting...' : 'Invite'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
 const CustomProgressBar = ({ value }: { value: number }) => {
   return (
     <div className="w-full bg-gray-200 rounded-full h-2.5">
@@ -222,9 +333,182 @@ export default function EditorPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
   const [isAiProcessing, setIsAiProcessing] = useState(false);
+  const [collaborators, setCollaborators] = useState<{id: string, email: string}[]>([]);
+  const [channel, setChannel] = useState<RealtimeChannel | null>(null);
+  const [debouncedCode] = useDebounce(code, 1000);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [projectCollaborators, setProjectCollaborators] = useState<{id: string, email: string}[]>([]);
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
 
+  // Check if user has access to the project
+  const checkAccess = async (projectId: string) => {
+    if (!user) return false;
+    
+    const { data: projectData, error: projectError } = await supabase
+      .from('projects')
+      .select('user_id')
+      .eq('id', projectId)
+      .single();
+
+    if (projectError || !projectData) {
+      throw new Error('Project not found');
+    }
+
+    if (projectData.user_id === user.id) {
+      return true; // Owner has access
+    }
+
+    const { data: collaboratorData, error: collaboratorError } = await supabase
+      .from('collaborators')
+      .select('user_id')
+      .eq('project_id', projectId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (collaboratorError || !collaboratorData) {
+      throw new Error('You do not have access to this project');
+    }
+
+    return true;
+  };
+
+  // Load project data
+  const loadProject = async (projectId: string) => {
+    try {
+      const hasAccess = await checkAccess(projectId);
+      if (!hasAccess) {
+        router.push('/');
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('id', projectId)
+        .single();
+
+      if (error) throw error;
+
+      setCode(data.html_code);
+      setFileName(data.name);
+      setProjectId(projectId);
+
+      // Load collaborators
+      loadCollaborators(projectId);
+    } catch (error) {
+      console.error('Error loading project:', error);
+      toast.error('Failed to load project');
+      router.push('/');
+    }
+  };
+
+  // Load collaborators list
+  const loadCollaborators = async (projectId: string) => {
+    const { data, error } = await supabase
+      .from('collaborators')
+      .select('user_id, profiles(email)')
+      .eq('project_id', projectId);
+
+    if (!error && data) {
+      setProjectCollaborators(data.map((c: any) => ({
+        id: c.user_id,
+        email: c.profiles.email
+      })));
+    }
+  };
+
+  // Invite collaborator
+  const inviteCollaborator = async (email: string) => {
+    if (!projectId) throw new Error('No project selected');
+    
+    // Find user by email
+    const { data: userData, error: userError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', email)
+      .single();
+
+    if (userError || !userData) {
+      throw new Error('User not found');
+    }
+
+    // Add to collaborators
+    const { error } = await supabase
+      .from('collaborators')
+      .insert({
+        project_id: projectId,
+        user_id: userData.id
+      });
+
+    if (error) {
+      if (error.code === '23505') {
+        throw new Error('User is already a collaborator');
+      }
+      throw error;
+    }
+
+    toast.success(`${email} invited to project`);
+    loadCollaborators(projectId);
+  };
+
+  // Initialize realtime updates
+  useEffect(() => {
+    if (!projectId || !user) return;
+
+    const newChannel = supabase
+      .channel(`project:${projectId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'projects',
+          filter: `id=eq.${projectId}`
+        },
+        (payload) => {
+          if (payload.new.user_id !== user.id) {
+            setCode(payload.new.html_code);
+            toast.info('Update from collaborator');
+          }
+        }
+      )
+      .on('presence', { event: 'sync' }, () => {
+        const state = newChannel.presenceState();
+        const currentCollaborators = Object.values(state)
+          .flat()
+          .map((presence: any) => presence.user)
+          .filter((u: any) => u.id !== user.id);
+        setCollaborators(currentCollaborators);
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await newChannel.track({
+            user: {
+              id: user.id,
+              email: user.email
+            }
+          });
+        }
+      });
+
+    setChannel(newChannel);
+
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
+  }, [projectId, user]);
+
+  // Auto-save when code changes (debounced)
+  useEffect(() => {
+    if (projectId && user && debouncedCode) {
+      handleSaveToCloud();
+    }
+  }, [debouncedCode]);
+
+  // Check user auth and load initial data
   useEffect(() => {
     const checkUser = async () => {
       const { data } = await supabase.auth.getSession();
@@ -246,15 +530,25 @@ export default function EditorPage() {
         if (generatedTemplate) {
           try {
             const template = JSON.parse(generatedTemplate);
-            setCode(template.html);
-            setProjectId(template.projectId);
-            setFileName(template.name);
+            if (template.projectId) {
+              await loadProject(template.projectId);
+            } else {
+              setCode(template.html);
+              setFileName(template.name);
+            }
           } catch (error) {
             console.error('Error parsing template:', error);
             setCode(getEmptyTemplate());
           }
         } else {
-          setCode(getEmptyTemplate());
+          // Check if we have a project ID in URL
+          const urlParams = new URLSearchParams(window.location.search);
+          const projectId = urlParams.get('project');
+          if (projectId) {
+            await loadProject(projectId);
+          } else {
+            setCode(getEmptyTemplate());
+          }
         }
       }
       
@@ -268,7 +562,8 @@ export default function EditorPage() {
     };
   }, []);
 
-  const getEmptyTemplate = () => {
+  // ... (keep your existing helper functions: getEmptyTemplate, handleDeviceChange, etc.)
+     const getEmptyTemplate = () => {
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -310,6 +605,24 @@ export default function EditorPage() {
 </body>
 </html>`;
   };
+   const handleRefreshPreview = () => {
+    if (typeof window !== 'undefined') {
+      setIsPreviewLoading(true);
+      const iframe = document.getElementById('preview') as HTMLIFrameElement;
+      if (iframe) {
+        const newIframe = document.createElement('iframe');
+        newIframe.id = 'preview';
+        newIframe.className = 'w-full h-full border-0';
+        newIframe.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-modals allow-forms');
+        newIframe.srcdoc = code;
+        newIframe.onload = () => setIsPreviewLoading(false);
+        
+        const container = iframe.parentElement;
+        container?.removeChild(iframe);
+        container?.appendChild(newIframe);
+      }
+    }
+  };
 
   const handleDeviceChange = (device: 'mobile' | 'tablet' | 'desktop') => {
     setActiveDevice(device);
@@ -327,8 +640,10 @@ export default function EditorPage() {
     setIsPreviewLoading(true);
     handleRefreshPreview();
   };
-
+  // Update handleSaveToCloud to include user_id
   const handleSaveToCloud = async () => {
+    if (!user) return;
+    
     setIsSaving(true);
     try {
       let nameToUse = fileName;
@@ -359,6 +674,29 @@ export default function EditorPage() {
 
       if (!projectId && data) {
         setProjectId(data[0]?.id);
+        // When creating a new project, we need to re-subscribe to the channel
+        if (channel) {
+          supabase.removeChannel(channel);
+          const newChannel = supabase
+            .channel(`project:${data[0]?.id}`)
+            .on(
+              'postgres_changes',
+              {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'projects',
+                filter: `id=eq.${data[0]?.id}`
+              },
+              (payload) => {
+                if (payload.new.user_id !== user.id) {
+                  setCode(payload.new.html_code);
+                  toast.info('Update from collaborator');
+                }
+              }
+            )
+            .subscribe();
+          setChannel(newChannel);
+        }
       }
 
       toast.success(projectId ? "Project updated" : "Project saved");
@@ -369,55 +707,6 @@ export default function EditorPage() {
       setIsSaving(false);
     }
   };
-
-  const handleSave = () => {
-    localStorage.setItem('lastSavedCode', code);
-    toast.success('Code saved locally');
-    handleSaveToCloud();
-  };
-
-  const handleDownload = () => {
-    if (typeof window !== 'undefined') {
-      try {
-        const blob = new Blob([code], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        toast.success('File downloaded');
-      } catch (error) {
-        console.error('Download error:', error);
-        toast.error('Failed to download file');
-      }
-    }
-  };
-
-  const handleRefreshPreview = () => {
-    if (typeof window !== 'undefined') {
-      setIsPreviewLoading(true);
-      const iframe = document.getElementById('preview') as HTMLIFrameElement;
-      if (iframe) {
-        const newIframe = document.createElement('iframe');
-        newIframe.id = 'preview';
-        newIframe.className = 'w-full h-full border-0';
-        newIframe.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-modals allow-forms');
-        newIframe.srcdoc = code;
-        newIframe.onload = () => setIsPreviewLoading(false);
-        
-        const container = iframe.parentElement;
-        container?.removeChild(iframe);
-        container?.appendChild(newIframe);
-      }
-    }
-  };
-
-
-
-
   const handleAiEdit = async () => {
     if (!aiPrompt.trim()) {
       toast.error("Please enter a prompt");
@@ -467,10 +756,8 @@ export default function EditorPage() {
       if (!generatedText.includes('<!DOCTYPE html>') || !generatedText.includes('<html')) {
         throw new Error('Invalid HTML generated');
       }
-const cleanedHtml = generatedText
-  .replace(/^```html\s*/, '') // Remove starting '''html (with optional space/newline)
-  .replace(/```$/, '');
-      setCode(cleanedHtml);
+
+      setCode(generatedText);
       toast.success("Code updated with AI modifications");
     } catch (error) {
       console.error("AI error:", error);
@@ -479,6 +766,33 @@ const cleanedHtml = generatedText
       setIsAiProcessing(false);
     }
   };
+  const handleSave = () => {
+      localStorage.setItem('lastSavedCode', code);
+      toast.success('Code saved locally');
+      handleSaveToCloud();
+    };
+   
+    
+      const handleDownload = () => {
+        if (typeof window !== 'undefined') {
+          try {
+            const blob = new Blob([code], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            toast.success('File downloaded');
+          } catch (error) {
+            console.error('Download error:', error);
+            toast.error('Failed to download file');
+          }
+        }
+      };
+  // ... (keep your existing functions: handleSave, handleDownload, handleRefreshPreview, handleAiEdit)
 
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -486,33 +800,31 @@ const cleanedHtml = generatedText
         <div className="container mx-auto flex justify-between items-center">
           <h1 className="text-xl font-bold">WebGenie Editor</h1>
           <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={aiPrompt}
-                onChange={(e) => setAiPrompt(e.target.value)}
-                placeholder="Ask AI to modify code..."
-                className="px-3 py-2 border rounded-md text-sm w-64"
-                onKeyDown={(e) => e.key === 'Enter' && handleAiEdit()}
-              />
-              <Button 
-                onClick={handleAiEdit}
-                disabled={isAiProcessing}
-              >
-                {isAiProcessing ? (
-                  <Loader2Icon className="h-4 w-4 animate-spin" />
-                ) : (
-                  <SparklesIcon className="h-4 w-4" />
-                )}
-                Apply
-              </Button>
-            </div>
+            <input
+              type="text"
+              value={aiPrompt}
+              onChange={(e) => setAiPrompt(e.target.value)}
+              placeholder="Ask AI to modify code..."
+              className="px-3 py-2 border rounded-md text-sm w-64"
+              onKeyDown={(e) => e.key === 'Enter' && handleAiEdit()}
+            />
+            <Button 
+              onClick={handleAiEdit}
+              disabled={isAiProcessing}
+            >
+              {isAiProcessing ? (
+                <Loader2Icon className="h-4 w-4 animate-spin" />
+              ) : (
+                <SparklesIcon className="h-4 w-4" />
+              )}
+              Apply
+            </Button>
+          </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={() => router.push('/')}>
               Back to Generator
             </Button>
             
-           
-
             <div className="border rounded-lg p-1 flex gap-1 bg-muted">
               <Button
                 variant={activeDevice === 'mobile' ? 'default' : 'ghost'}
@@ -545,14 +857,20 @@ const cleanedHtml = generatedText
               Refresh
             </Button>
             {user && (
-              <Button onClick={handleSave} disabled={isSaving}>
-                {isSaving ? (
-                  <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <SaveIcon className="mr-2 h-4 w-4" />
-                )}
-                Save
-              </Button>
+              <>
+                <Button onClick={handleSave} disabled={isSaving}>
+                  {isSaving ? (
+                    <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <SaveIcon className="mr-2 h-4 w-4" />
+                  )}
+                  Save
+                </Button>
+                <Button onClick={() => setShowInviteModal(true)}>
+                  <Users className="mr-2 h-4 w-4" />
+                  Share
+                </Button>
+              </>
             )}
             <Button onClick={handleDownload}>
               <DownloadIcon className="mr-2 h-4 w-4" />
@@ -582,7 +900,6 @@ const cleanedHtml = generatedText
           />
         </div>
         
-
         <div className="flex-1">
           <Tabs defaultValue="preview" className="h-full flex flex-col">
             <TabsList className="mx-4 mt-2">
@@ -619,7 +936,21 @@ const cleanedHtml = generatedText
           </Tabs>
         </div>
       </main>
-       
+
+      {collaborators.length > 0 && (
+        <CollaboratorsList 
+          collaborators={collaborators} 
+          onInviteClick={() => setShowInviteModal(true)} 
+        />
+      )}
+
+      {showInviteModal && projectId && (
+        <InviteCollaboratorModal
+          projectId={projectId}
+          onClose={() => setShowInviteModal(false)}
+          onInvite={inviteCollaborator}
+        />
+      )}
     </div>
   );
 }

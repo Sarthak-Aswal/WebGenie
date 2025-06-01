@@ -34,6 +34,7 @@ const Progress = dynamic(
   () => import('@/components/ui/progress').then(mod => mod.Progress),
   { ssr: false }
 );
+
 const CustomProgressBar = ({ value }: { value: number }) => {
   return (
     <div className="w-full bg-gray-200 rounded-full h-2.5">
@@ -609,7 +610,7 @@ export default function EditorPage() {
               </div>
             </TabsContent>
             <TabsContent value="seo" className="flex-1 overflow-auto">
-              <SEOAnalyzer html={enhancedCode} />
+              <SEOAnalyzer html={code} />
             </TabsContent>
           </Tabs>
         </div>
