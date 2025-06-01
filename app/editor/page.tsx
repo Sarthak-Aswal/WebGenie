@@ -302,6 +302,27 @@ export default function EditorPage() {
         <div className="container mx-auto flex justify-between items-center">
           <h1 className="text-xl font-bold">WebGenie Editor</h1>
           <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                placeholder="Ask AI to modify code..."
+                className="px-3 py-2 border rounded-md text-sm w-64"
+                onKeyDown={(e) => e.key === 'Enter' && handleAiEdit()}
+              />
+              <Button 
+                onClick={handleAiEdit}
+                disabled={isAiProcessing}
+              >
+                {isAiProcessing ? (
+                  <Loader2Icon className="h-4 w-4 animate-spin" />
+                ) : (
+                  <SparklesIcon className="h-4 w-4" />
+                )}
+                Apply
+              </Button>
+            </div>
+          <div className="flex items-center gap-2">
             <Button variant="outline" onClick={() => router.push('/')}>
               Back to Generator
             </Button>
@@ -414,27 +435,7 @@ export default function EditorPage() {
           </Tabs>
         </div>
       </main>
-       <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={aiPrompt}
-                onChange={(e) => setAiPrompt(e.target.value)}
-                placeholder="Ask AI to modify code..."
-                className="px-3 py-2 border rounded-md text-sm w-64"
-                onKeyDown={(e) => e.key === 'Enter' && handleAiEdit()}
-              />
-              <Button 
-                onClick={handleAiEdit}
-                disabled={isAiProcessing}
-              >
-                {isAiProcessing ? (
-                  <Loader2Icon className="h-4 w-4 animate-spin" />
-                ) : (
-                  <SparklesIcon className="h-4 w-4" />
-                )}
-                Apply
-              </Button>
-            </div>
+       
     </div>
   );
 }
