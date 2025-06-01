@@ -157,11 +157,12 @@ export default function EditorPage() {
     let nameToUse = fileName;
 
     // Ask for name if it's a new project and no name is set
-    if ( projectId=="empty"||fileName==""){
+    if ( !projectId||fileName==""){
       const userInput = prompt("Enter a name for your project:");
       if (!userInput || userInput.trim() === "") {
         toast.error("Project name is required to save.");
         setIsSaving(false);
+         
         return;
       }
       nameToUse = userInput.trim();
