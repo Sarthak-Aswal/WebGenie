@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import { supabase } from "@/lib/supabase";
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // Dynamically import components to avoid SSR issues
 const Editor = dynamic(() => import('@monaco-editor/react'), {
@@ -41,12 +42,14 @@ export default function EditorPage() {
   const [previewWidth, setPreviewWidth] = useState('100%');
   const [activeDevice, setActiveDevice] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
   const [isSaving, setIsSaving] = useState(false);
-  const [isAILoading, setIsAILoading] = useState(false);
-  const [isAIEnabled, setIsAIEnabled] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [isAiProcessing, setIsAiProcessing] = useState(false);
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const editorRef = useRef<any>(null);
-  const monacoRef = useRef<any>(null);
+
+  // Initialize Gemini AI
+  const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY || '');
 
   useEffect(() => {
     const checkUser = async () => {
@@ -80,6 +83,7 @@ export default function EditorPage() {
           setCode(getEmptyTemplate());
         }
       }
+      
       setIsLoading(false);
     };
 
@@ -237,92 +241,42 @@ export default function EditorPage() {
     }
   };
 
-  const toggleAI = () => {
-    setIsAIEnabled(!isAIEnabled);
-    toast.info(isAIEnabled ? "AI suggestions disabled" : "AI suggestions enabled");
-  };
+  const handleAiEdit = async () => {
+    if (!aiPrompt.trim()) {
+      toast.error("Please enter a prompt");
+      return;
+    }
 
-  const getAISuggestions = async (model: any, position: any) => {
-    if (!isAIEnabled) return { suggestions: [] };
-
-    setIsAILoading(true);
+    setIsAiProcessing(true);
     try {
-      // Get the current line text
-      const lineContent = model.getLineContent(position.lineNumber);
+      const model = genAI.getGenerativeModel({ model: "gemini-pro" });
       
-      // Simple AI suggestions based on context
-      const suggestions = [];
-      
-      // If typing in head section
-      if (model.getValue().includes('<head>') && position.lineNumber < model.getLineCount() / 2) {
-        suggestions.push({
-          label: 'meta-viewport',
-          kind: monacoRef.current.languages.CompletionItemKind.Snippet,
-          documentation: "Add responsive viewport meta tag",
-          insertText: '<meta name="viewport" content="width=device-width, initial-scale=1.0">',
-          range: new monacoRef.current.Range(
-            position.lineNumber,
-            position.column,
-            position.lineNumber,
-            position.column
-          )
-        });
-        
-        suggestions.push({
-          label: 'meta-description',
-          kind: monacoRef.current.languages.CompletionItemKind.Snippet,
-          documentation: "Add SEO meta description",
-          insertText: '<meta name="description" content="Page description">',
-          range: new monacoRef.current.Range(
-            position.lineNumber,
-            position.column,
-            position.lineNumber,
-            position.column
-          )
-        });
+      const fullPrompt = `
+        You are a web development assistant. Modify the following HTML code based on the user's request.
+        IMPORTANT: Return ONLY the full modified HTML code, no explanations or additional text.
+
+        Current HTML code:
+        ${code}
+
+        User request: ${aiPrompt}
+      `;
+
+      const result = await model.generateContent(fullPrompt);
+      const response = await result.response;
+      const modifiedCode = response.text();
+
+      // Basic validation to ensure we got HTML back
+      if (modifiedCode.includes('<') && modifiedCode.includes('>')) {
+        setCode(modifiedCode);
+        toast.success("Code updated successfully");
+      } else {
+        throw new Error("Invalid HTML response");
       }
-      
-      // If typing in body section
-      if (model.getValue().includes('<body>') && position.lineNumber > model.getLineCount() / 2) {
-        if (lineContent.includes('class=')) {
-          suggestions.push({
-            label: 'container-div',
-            kind: monacoRef.current.languages.CompletionItemKind.Snippet,
-            documentation: "Add responsive container div",
-            insertText: '<div class="container">\n  $0\n</div>',
-            range: new monacoRef.current.Range(
-              position.lineNumber,
-              position.column,
-              position.lineNumber,
-              position.column
-            )
-          });
-        }
-        
-        if (lineContent.includes('<h')) {
-          suggestions.push({
-            label: 'heading-with-class',
-            kind: monacoRef.current.languages.CompletionItemKind.Snippet,
-            documentation: "Add heading with class",
-            insertText: '<h1 class="heading">$0</h1>',
-            range: new monacoRef.current.Range(
-              position.lineNumber,
-              position.column,
-              position.lineNumber,
-              position.column
-            )
-          });
-        }
-      }
-      
-      // Add more context-aware suggestions as needed
-      
-      return { suggestions };
     } catch (error) {
-      console.error("AI suggestion error:", error);
-      return { suggestions: [] };
+      console.error("AI error:", error);
+      toast.error("Failed to modify code");
     } finally {
-      setIsAILoading(false);
+      setIsAiProcessing(false);
     }
   };
 
@@ -336,6 +290,28 @@ export default function EditorPage() {
               Back to Generator
             </Button>
             
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                placeholder="Ask AI to modify code..."
+                className="px-3 py-2 border rounded-md text-sm w-64"
+                onKeyDown={(e) => e.key === 'Enter' && handleAiEdit()}
+              />
+              <Button 
+                onClick={handleAiEdit}
+                disabled={isAiProcessing}
+              >
+                {isAiProcessing ? (
+                  <Loader2Icon className="h-4 w-4 animate-spin" />
+                ) : (
+                  <SparklesIcon className="h-4 w-4" />
+                )}
+                Apply
+              </Button>
+            </div>
+
             <div className="border rounded-lg p-1 flex gap-1 bg-muted">
               <Button
                 variant={activeDevice === 'mobile' ? 'default' : 'ghost'}
@@ -367,20 +343,6 @@ export default function EditorPage() {
               <RotateCwIcon className="mr-2 h-4 w-4" />
               Refresh
             </Button>
-
-            <Button 
-              variant={isAIEnabled ? "default" : "outline"} 
-              onClick={toggleAI}
-              disabled={isAILoading}
-            >
-              {isAILoading ? (
-                <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <SparklesIcon className="mr-2 h-4 w-4" />
-              )}
-              {isAIEnabled ? "AI On" : "AI Off"}
-            </Button>
-
             {user && (
               <Button onClick={handleSave} disabled={isSaving}>
                 {isSaving ? (
@@ -415,52 +377,9 @@ export default function EditorPage() {
               wordWrap: 'on',
               formatOnPaste: true,
               formatOnType: true,
-              quickSuggestions: {
-                other: true,
-                comments: true,
-                strings: true
-              },
-              suggest: {
-                showWords: true,
-                showSnippets: true,
-                showClasses: true,
-                showMethods: true,
-                showFunctions: true,
-                showProperties: true,
-                showVariables: true,
-                showFields: true,
-                showConstructors: true,
-                showInterfaces: true,
-                showModules: true,
-                showReferences: true,
-                showEnums: true,
-                showStructs: true,
-                showEvents: true,
-                showOperators: true,
-                showUnits: true,
-                showValues: true,
-                showConstants: true,
-                showKeywords: true,
-                showColors: true,
-                showFiles: true,
-                showUsers: true,
-                showFolders: true,
-              },
-              parameterHints: {
-                enabled: true
-              },
-              tabCompletion: "on",
             }}
-            onMount={(editor, monaco) => {
+            onMount={(editor) => {
               editorRef.current = editor;
-              monacoRef.current = monaco;
-              
-              // Register completion item provider
-              monaco.languages.registerCompletionItemProvider('html', {
-                provideCompletionItems: async (model, position) => {
-                  return await getAISuggestions(model, position);
-                }
-              });
             }}
           />
         </div>
