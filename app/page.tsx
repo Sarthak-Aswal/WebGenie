@@ -82,11 +82,15 @@ export default function Home() {
 
     try {
       const generatedHtml = await generateWithGemini(prompt);
-      console.log(generatedHtml);
+      const cleanedHtml = generatedHtml
+  .replace(/^```html\s*/, '') // Remove starting '''html (with optional space/newline)
+  .replace(/```$/, '');       // Remove ending '''
+
+     
       const template = {
         name: "",
         projectId:null,
-        html: generatedHtml
+        html: cleanedHtml
       };
       console.log(template.name);
       
