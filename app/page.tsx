@@ -85,7 +85,7 @@ export default function Home() {
       
       const template = {
         name: "",
-        projectId:"",
+        projectId:null,
         html: generatedHtml
       };
       console.log(template.name);
