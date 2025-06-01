@@ -4,7 +4,6 @@ import dynamic from 'next/dynamic';
 import { supabase } from "@/lib/supabase";
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // Dynamically import components to avoid SSR issues
 const Editor = dynamic(() => import('@monaco-editor/react'), {
@@ -46,10 +45,6 @@ export default function EditorPage() {
   const [isAiProcessing, setIsAiProcessing] = useState(false);
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
-  const editorRef = useRef<any>(null);
-
-  // Initialize Gemini AI
-  const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API || '');
 
   useEffect(() => {
     const checkUser = async () => {
@@ -249,32 +244,54 @@ export default function EditorPage() {
 
     setIsAiProcessing(true);
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-      
-      const fullPrompt = `
-        You are a web development assistant. Modify the following HTML code based on the user's request.
-        IMPORTANT: Return ONLY the full modified HTML code, no explanations or additional text.
-
-        Current HTML code:
-        ${code}
-
-        User request: ${aiPrompt}
-      `;
-
-      const result = await model.generateContent(fullPrompt);
-      const response = await result.response;
-      const modifiedCode = response.text();
-
-      // Basic validation to ensure we got HTML back
-      if (modifiedCode.includes('<') && modifiedCode.includes('>')) {
-        setCode(modifiedCode);
-        toast.success("Code updated successfully");
-      } else {
-        throw new Error("Invalid HTML response");
+      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API;
+      if (!apiKey) {
+        throw new Error('API key is missing');
       }
+
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`;
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: `Modify this HTML code based on the user's request. Return ONLY the complete modified HTML code with inline CSS and JavaScript. No explanations.
+              
+              Current HTML:
+              ${code}
+              
+              User Request: ${aiPrompt}`
+            }]
+          }]
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || 'API request failed');
+      }
+
+      const data = await response.json();
+      const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (!generatedText) {
+        throw new Error('No generated content found in response');
+      }
+
+      // Basic validation
+      if (!generatedText.includes('<!DOCTYPE html>') || !generatedText.includes('<html')) {
+        throw new Error('Invalid HTML generated');
+      }
+
+      setCode(generatedText);
+      toast.success("Code updated with AI modifications");
     } catch (error) {
       console.error("AI error:", error);
-      toast.error("Failed to modify code");
+      toast.error("Failed to modify code. Please try a different prompt.");
     } finally {
       setIsAiProcessing(false);
     }
@@ -377,9 +394,6 @@ export default function EditorPage() {
               wordWrap: 'on',
               formatOnPaste: true,
               formatOnType: true,
-            }}
-            onMount={(editor) => {
-              editorRef.current = editor;
             }}
           />
         </div>
