@@ -414,6 +414,17 @@ export default function EditorPage() {
       }
     }
   };
+const enhancedCode = `
+  ${code}
+  <script>
+    document.querySelectorAll('a').forEach(a => {
+      a.setAttribute('target', '_blank');
+      a.setAttribute('rel', 'noopener noreferrer');
+    });
+  </script>
+`;
+
+
 
   const handleAiEdit = async () => {
     if (!aiPrompt.trim()) {
@@ -609,7 +620,7 @@ export default function EditorPage() {
               </div>
             </TabsContent>
             <TabsContent value="seo" className="flex-1 overflow-auto">
-              <SEOAnalyzer html={code} />
+              <SEOAnalyzer html={enhancedCode} />
             </TabsContent>
           </Tabs>
         </div>
