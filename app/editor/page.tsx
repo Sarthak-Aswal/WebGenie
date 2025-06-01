@@ -307,7 +307,7 @@ export default function EditorPage() {
                 value={aiPrompt}
                 onChange={(e) => setAiPrompt(e.target.value)}
                 placeholder="Ask AI to modify code..."
-                className="px-3 py-2 border rounded-md text-sm w-64"
+                className="px-3 py-2 border rounded-md text-sm w-70"
                 onKeyDown={(e) => e.key === 'Enter' && handleAiEdit()}
               />
               <Button 
