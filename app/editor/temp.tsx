@@ -1,10 +1,9 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { supabase } from "@/lib/supabase";
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-
 
 // Dynamically import components to avoid SSR issues
 const Editor = dynamic(() => import('@monaco-editor/react'), {
@@ -23,7 +22,7 @@ const SEOAnalyzer = dynamic(() => import('@/components/SEOAnalyzer'), {
   ssr: false,
 });
 
-// Dynamically import icons to prevent build errors
+// Dynamically import icons
 const SaveIcon = dynamic(() => import('lucide-react').then(mod => mod.Save));
 const RotateCwIcon = dynamic(() => import('lucide-react').then(mod => mod.RotateCw));
 const Loader2Icon = dynamic(() => import('lucide-react').then(mod => mod.Loader2));
@@ -31,10 +30,10 @@ const DownloadIcon = dynamic(() => import('lucide-react').then(mod => mod.Downlo
 const SmartphoneIcon = dynamic(() => import('lucide-react').then(mod => mod.Smartphone));
 const TabletIcon = dynamic(() => import('lucide-react').then(mod => mod.Tablet));
 const MonitorIcon = dynamic(() => import('lucide-react').then(mod => mod.Monitor));
+const SparklesIcon = dynamic(() => import('lucide-react').then(mod => mod.Sparkles));
 
 export default function EditorPage() {
   const [projectId, setProjectId] = useState<string | null>(null);
-
   const [code, setCode] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [isPreviewLoading, setIsPreviewLoading] = useState(true);
@@ -42,31 +41,26 @@ export default function EditorPage() {
   const [previewWidth, setPreviewWidth] = useState('100%');
   const [activeDevice, setActiveDevice] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
   const [isSaving, setIsSaving] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [isAiProcessing, setIsAiProcessing] = useState(false);
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
 
-
-
- 
-
   useEffect(() => {
-     const checkUser = async () => {
-          const { data } = await supabase.auth.getSession();
-          setUser(data.session?.user || null);
-          console.log(user);
-        };
-    
-        checkUser();
-    
-        // Listen for auth changes (login/logout)
-        const { data: authListener } = supabase.auth.onAuthStateChange(
-          (_event, session) => {
-            setUser(session?.user || null);
-          }
-        );
+    const checkUser = async () => {
+      const { data } = await supabase.auth.getSession();
+      setUser(data.session?.user || null);
+    };
+
+    checkUser();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user || null);
+      }
+    );
+
     const loadInitialData = async () => {
-       
-       
       if (typeof window !== 'undefined') {
         const generatedTemplate = sessionStorage.getItem('generatedTemplate');
         
@@ -75,7 +69,7 @@ export default function EditorPage() {
             const template = JSON.parse(generatedTemplate);
             setCode(template.html);
             setProjectId(template.projectId);
-            setFileName(template.name );
+            setFileName(template.name);
           } catch (error) {
             console.error('Error parsing template:', error);
             setCode(getEmptyTemplate());
@@ -89,6 +83,10 @@ export default function EditorPage() {
     };
 
     loadInitialData();
+
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
   }, []);
 
   const getEmptyTemplate = () => {
@@ -151,50 +149,47 @@ export default function EditorPage() {
     handleRefreshPreview();
   };
 
- const handleSaveToCloud = async () => {
-  setIsSaving(true);
-  try {
-    let nameToUse = fileName;
+  const handleSaveToCloud = async () => {
+    setIsSaving(true);
+    try {
+      let nameToUse = fileName;
 
-    // Ask for name if it's a new project and no name is set
-    if ( !projectId||fileName==""){
-      const userInput = prompt("Enter a name for your project:");
-      if (!userInput || userInput.trim() === "") {
-        toast.error("Project name is required to save.");
-        setIsSaving(false);
-         
-        return;
+      if (!projectId || fileName === "") {
+        const userInput = prompt("Enter a name for your project:");
+        if (!userInput || userInput.trim() === "") {
+          toast.error("Project name is required to save.");
+          setIsSaving(false);
+          return;
+        }
+        nameToUse = userInput.trim();
+        setFileName(nameToUse);
       }
-      nameToUse = userInput.trim();
-      setFileName(nameToUse); // optional: update UI if fileName is state
+
+      const upsertData = {
+        user_id: user.id,
+        name: nameToUse,
+        html_code: code,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { data, error } = projectId
+        ? await supabase.from("projects").update(upsertData).eq("id", projectId)
+        : await supabase.from("projects").insert(upsertData).select();
+
+      if (error) throw error;
+
+      if (!projectId && data) {
+        setProjectId(data[0]?.id);
+      }
+
+      toast.success(projectId ? "Project updated" : "Project saved");
+    } catch (error) {
+      console.error("Save error:", error);
+      toast.error("Failed to save project");
+    } finally {
+      setIsSaving(false);
     }
-
-    const upsertData = {
-      user_id: user.id,
-      name: nameToUse,
-      html_code: code,
-      updated_at: new Date().toISOString(),
-    };
-
-    const { data, error } = projectId
-      ? await supabase.from("projects").update(upsertData).eq("id", projectId)
-      : await supabase.from("projects").insert(upsertData).select();
-
-    if (error) throw error;
-
-    if (!projectId && data) {
-      setProjectId(data[0]?.id);
-    }
-
-    toast.success(projectId ? "Project updated" : "Project saved");
-  } catch (error) {
-    console.error("Save error:", error);
-    toast.error("Failed to save project");
-  } finally {
-    setIsSaving(false);
-  }
-};
-
+  };
 
   const handleSave = () => {
     localStorage.setItem('lastSavedCode', code);
@@ -241,7 +236,65 @@ export default function EditorPage() {
     }
   };
 
- 
+  const handleAiEdit = async () => {
+    if (!aiPrompt.trim()) {
+      toast.error("Please enter a prompt");
+      return;
+    }
+
+    setIsAiProcessing(true);
+    try {
+      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API;
+      if (!apiKey) {
+        throw new Error('API key is missing');
+      }
+
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: `Modify this HTML code based on the user's request. Return ONLY the complete modified HTML code with inline CSS and JavaScript. No explanations.
+              
+              Current HTML:
+              ${code}
+              
+              User Request: ${aiPrompt}`
+            }]
+          }]
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || 'API request failed');
+      }
+
+      const data = await response.json();
+      const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (!generatedText) {
+        throw new Error('No generated content found in response');
+      }
+
+      // Basic validation
+      if (!generatedText.includes('<!DOCTYPE html>') || !generatedText.includes('<html')) {
+        throw new Error('Invalid HTML generated');
+      }
+
+      setCode(generatedText);
+      toast.success("Code updated with AI modifications");
+    } catch (error) {
+      console.error("AI error:", error);
+      toast.error("Failed to modify code. Please try a different prompt.");
+    } finally {
+      setIsAiProcessing(false);
+    }
+  };
 
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -249,11 +302,33 @@ export default function EditorPage() {
         <div className="container mx-auto flex justify-between items-center">
           <h1 className="text-xl font-bold">WebGenie Editor</h1>
           <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                placeholder="Ask AI to modify code..."
+                className="px-3 py-2 border rounded-md text-sm w-64"
+                onKeyDown={(e) => e.key === 'Enter' && handleAiEdit()}
+              />
+              <Button 
+                onClick={handleAiEdit}
+                disabled={isAiProcessing}
+              >
+                {isAiProcessing ? (
+                  <Loader2Icon className="h-4 w-4 animate-spin" />
+                ) : (
+                  <SparklesIcon className="h-4 w-4" />
+                )}
+                Apply
+              </Button>
+            </div>
+          <div className="flex items-center gap-2">
             <Button variant="outline" onClick={() => router.push('/')}>
               Back to Generator
             </Button>
-           
             
+           
+
             <div className="border rounded-lg p-1 flex gap-1 bg-muted">
               <Button
                 variant={activeDevice === 'mobile' ? 'default' : 'ghost'}
@@ -285,16 +360,16 @@ export default function EditorPage() {
               <RotateCwIcon className="mr-2 h-4 w-4" />
               Refresh
             </Button>
-           {user && (
-  <Button onClick={handleSave} disabled={isSaving}>
-    {isSaving ? (
-      <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-    ) : (
-      <SaveIcon className="mr-2 h-4 w-4" />
-    )}
-    Save
-  </Button>
-)}
+            {user && (
+              <Button onClick={handleSave} disabled={isSaving}>
+                {isSaving ? (
+                  <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <SaveIcon className="mr-2 h-4 w-4" />
+                )}
+                Save
+              </Button>
+            )}
             <Button onClick={handleDownload}>
               <DownloadIcon className="mr-2 h-4 w-4" />
               Download
@@ -322,6 +397,7 @@ export default function EditorPage() {
             }}
           />
         </div>
+        
 
         <div className="flex-1">
           <Tabs defaultValue="preview" className="h-full flex flex-col">
@@ -359,6 +435,7 @@ export default function EditorPage() {
           </Tabs>
         </div>
       </main>
+       
     </div>
   );
 }
