@@ -19,7 +19,9 @@ const Tabs = dynamic(() => import('@/components/ui/tabs').then(mod => mod.Tabs))
 const TabsContent = dynamic(() => import('@/components/ui/tabs').then(mod => mod.TabsContent));
 const TabsList = dynamic(() => import('@/components/ui/tabs').then(mod => mod.TabsList));
 const TabsTrigger = dynamic(() => import('@/components/ui/tabs').then(mod => mod.TabsTrigger));
-const SEOAnalyzer = dynamic(() => import('@/components/seo-analyzer').then(mod => mod.SEOAnalyzer));
+const SEOAnalyzer = dynamic(() => import('@/components/SEOAnalyzer'), {
+  ssr: false,
+});
 
 // Dynamically import icons to prevent build errors
 const SaveIcon = dynamic(() => import('lucide-react').then(mod => mod.Save));
@@ -36,12 +38,13 @@ export default function EditorPage() {
   const [code, setCode] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [isPreviewLoading, setIsPreviewLoading] = useState(true);
-  const [fileName, setFileName] = useState('untitled.html');
+  const [fileName, setFileName] = useState('');
   const [previewWidth, setPreviewWidth] = useState('100%');
   const [activeDevice, setActiveDevice] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
   const [isSaving, setIsSaving] = useState(false);
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
+
 
 
  
@@ -71,7 +74,8 @@ export default function EditorPage() {
           try {
             const template = JSON.parse(generatedTemplate);
             setCode(template.html);
-            setFileName(template.name || 'untitled.html');
+            setProjectId(template.projectId);
+            setFileName(template.name );
           } catch (error) {
             console.error('Error parsing template:', error);
             setCode(getEmptyTemplate());
@@ -148,35 +152,49 @@ export default function EditorPage() {
   };
 
  const handleSaveToCloud = async () => {
-    setIsSaving(true);
-    try {
-      
+  setIsSaving(true);
+  try {
+    let nameToUse = fileName;
 
-      const upsertData = {
-        user_id: user.id,
-        name: fileName,
-        html_code: code,
-        updated_at: new Date().toISOString()
-      };
-
-      const { data, error } = projectId 
-        ? await supabase.from('projects').update(upsertData).eq('id', projectId)
-        : await supabase.from('projects').insert(upsertData).select();
-
-      if (error) throw error;
-
-      if (!projectId && data) {
-        setProjectId(data[0]?.id);
+    // Ask for name if it's a new project and no name is set
+    if ( !projectId||fileName==""){
+      const userInput = prompt("Enter a name for your project:");
+      if (!userInput || userInput.trim() === "") {
+        toast.error("Project name is required to save.");
+        setIsSaving(false);
+         
+        return;
       }
-      
-      toast.success(projectId ? 'Project updated' : 'Project saved');
-    } catch (error) {
-      console.error('Save error:', error);
-      toast.error('Failed to save project');
-    } finally {
-      setIsSaving(false);
+      nameToUse = userInput.trim();
+      setFileName(nameToUse); // optional: update UI if fileName is state
     }
-  };
+
+    const upsertData = {
+      user_id: user.id,
+      name: nameToUse,
+      html_code: code,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data, error } = projectId
+      ? await supabase.from("projects").update(upsertData).eq("id", projectId)
+      : await supabase.from("projects").insert(upsertData).select();
+
+    if (error) throw error;
+
+    if (!projectId && data) {
+      setProjectId(data[0]?.id);
+    }
+
+    toast.success(projectId ? "Project updated" : "Project saved");
+  } catch (error) {
+    console.error("Save error:", error);
+    toast.error("Failed to save project");
+  } finally {
+    setIsSaving(false);
+  }
+};
+
 
   const handleSave = () => {
     localStorage.setItem('lastSavedCode', code);
@@ -223,24 +241,7 @@ export default function EditorPage() {
     }
   };
 
-  const handleNewProject = () => {
-    if (code !== getEmptyTemplate() && !confirm('Are you sure? Unsaved changes will be lost.')) {
-      return;
-    }
-    setCode(getEmptyTemplate());
-    setFileName('untitled.html');
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="flex items-center gap-2">
-          <Loader2Icon className="h-6 w-6 animate-spin" />
-          <span>Loading editor...</span>
-        </div>
-      </div>
-    );
-  }
+ 
 
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -251,9 +252,7 @@ export default function EditorPage() {
             <Button variant="outline" onClick={() => router.push('/')}>
               Back to Generator
             </Button>
-            <Button variant="outline" onClick={handleNewProject}>
-              New Project
-            </Button>
+           
             
             <div className="border rounded-lg p-1 flex gap-1 bg-muted">
               <Button

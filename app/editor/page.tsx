@@ -1,10 +1,9 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { supabase } from "@/lib/supabase";
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-
 
 // Dynamically import components to avoid SSR issues
 const Editor = dynamic(() => import('@monaco-editor/react'), {
@@ -23,7 +22,7 @@ const SEOAnalyzer = dynamic(() => import('@/components/SEOAnalyzer'), {
   ssr: false,
 });
 
-// Dynamically import icons to prevent build errors
+// Dynamically import icons
 const SaveIcon = dynamic(() => import('lucide-react').then(mod => mod.Save));
 const RotateCwIcon = dynamic(() => import('lucide-react').then(mod => mod.RotateCw));
 const Loader2Icon = dynamic(() => import('lucide-react').then(mod => mod.Loader2));
@@ -31,10 +30,10 @@ const DownloadIcon = dynamic(() => import('lucide-react').then(mod => mod.Downlo
 const SmartphoneIcon = dynamic(() => import('lucide-react').then(mod => mod.Smartphone));
 const TabletIcon = dynamic(() => import('lucide-react').then(mod => mod.Tablet));
 const MonitorIcon = dynamic(() => import('lucide-react').then(mod => mod.Monitor));
+const SparklesIcon = dynamic(() => import('lucide-react').then(mod => mod.Sparkles));
 
 export default function EditorPage() {
   const [projectId, setProjectId] = useState<string | null>(null);
-
   const [code, setCode] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [isPreviewLoading, setIsPreviewLoading] = useState(true);
@@ -42,31 +41,28 @@ export default function EditorPage() {
   const [previewWidth, setPreviewWidth] = useState('100%');
   const [activeDevice, setActiveDevice] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
   const [isSaving, setIsSaving] = useState(false);
+  const [isAILoading, setIsAILoading] = useState(false);
+  const [isAIEnabled, setIsAIEnabled] = useState(false);
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
-
-
-
- 
+  const editorRef = useRef<any>(null);
+  const monacoRef = useRef<any>(null);
 
   useEffect(() => {
-     const checkUser = async () => {
-          const { data } = await supabase.auth.getSession();
-          setUser(data.session?.user || null);
-          console.log(user);
-        };
-    
-        checkUser();
-    
-        // Listen for auth changes (login/logout)
-        const { data: authListener } = supabase.auth.onAuthStateChange(
-          (_event, session) => {
-            setUser(session?.user || null);
-          }
-        );
+    const checkUser = async () => {
+      const { data } = await supabase.auth.getSession();
+      setUser(data.session?.user || null);
+    };
+
+    checkUser();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user || null);
+      }
+    );
+
     const loadInitialData = async () => {
-       
-       
       if (typeof window !== 'undefined') {
         const generatedTemplate = sessionStorage.getItem('generatedTemplate');
         
@@ -75,7 +71,7 @@ export default function EditorPage() {
             const template = JSON.parse(generatedTemplate);
             setCode(template.html);
             setProjectId(template.projectId);
-            setFileName(template.name );
+            setFileName(template.name);
           } catch (error) {
             console.error('Error parsing template:', error);
             setCode(getEmptyTemplate());
@@ -84,11 +80,14 @@ export default function EditorPage() {
           setCode(getEmptyTemplate());
         }
       }
-      
       setIsLoading(false);
     };
 
     loadInitialData();
+
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
   }, []);
 
   const getEmptyTemplate = () => {
@@ -151,50 +150,47 @@ export default function EditorPage() {
     handleRefreshPreview();
   };
 
- const handleSaveToCloud = async () => {
-  setIsSaving(true);
-  try {
-    let nameToUse = fileName;
+  const handleSaveToCloud = async () => {
+    setIsSaving(true);
+    try {
+      let nameToUse = fileName;
 
-    // Ask for name if it's a new project and no name is set
-    if ( !projectId||fileName==""){
-      const userInput = prompt("Enter a name for your project:");
-      if (!userInput || userInput.trim() === "") {
-        toast.error("Project name is required to save.");
-        setIsSaving(false);
-         
-        return;
+      if (!projectId || fileName === "") {
+        const userInput = prompt("Enter a name for your project:");
+        if (!userInput || userInput.trim() === "") {
+          toast.error("Project name is required to save.");
+          setIsSaving(false);
+          return;
+        }
+        nameToUse = userInput.trim();
+        setFileName(nameToUse);
       }
-      nameToUse = userInput.trim();
-      setFileName(nameToUse); // optional: update UI if fileName is state
+
+      const upsertData = {
+        user_id: user.id,
+        name: nameToUse,
+        html_code: code,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { data, error } = projectId
+        ? await supabase.from("projects").update(upsertData).eq("id", projectId)
+        : await supabase.from("projects").insert(upsertData).select();
+
+      if (error) throw error;
+
+      if (!projectId && data) {
+        setProjectId(data[0]?.id);
+      }
+
+      toast.success(projectId ? "Project updated" : "Project saved");
+    } catch (error) {
+      console.error("Save error:", error);
+      toast.error("Failed to save project");
+    } finally {
+      setIsSaving(false);
     }
-
-    const upsertData = {
-      user_id: user.id,
-      name: nameToUse,
-      html_code: code,
-      updated_at: new Date().toISOString(),
-    };
-
-    const { data, error } = projectId
-      ? await supabase.from("projects").update(upsertData).eq("id", projectId)
-      : await supabase.from("projects").insert(upsertData).select();
-
-    if (error) throw error;
-
-    if (!projectId && data) {
-      setProjectId(data[0]?.id);
-    }
-
-    toast.success(projectId ? "Project updated" : "Project saved");
-  } catch (error) {
-    console.error("Save error:", error);
-    toast.error("Failed to save project");
-  } finally {
-    setIsSaving(false);
-  }
-};
-
+  };
 
   const handleSave = () => {
     localStorage.setItem('lastSavedCode', code);
@@ -241,7 +237,94 @@ export default function EditorPage() {
     }
   };
 
- 
+  const toggleAI = () => {
+    setIsAIEnabled(!isAIEnabled);
+    toast.info(isAIEnabled ? "AI suggestions disabled" : "AI suggestions enabled");
+  };
+
+  const getAISuggestions = async (model: any, position: any) => {
+    if (!isAIEnabled) return { suggestions: [] };
+
+    setIsAILoading(true);
+    try {
+      // Get the current line text
+      const lineContent = model.getLineContent(position.lineNumber);
+      
+      // Simple AI suggestions based on context
+      const suggestions = [];
+      
+      // If typing in head section
+      if (model.getValue().includes('<head>') && position.lineNumber < model.getLineCount() / 2) {
+        suggestions.push({
+          label: 'meta-viewport',
+          kind: monacoRef.current.languages.CompletionItemKind.Snippet,
+          documentation: "Add responsive viewport meta tag",
+          insertText: '<meta name="viewport" content="width=device-width, initial-scale=1.0">',
+          range: new monacoRef.current.Range(
+            position.lineNumber,
+            position.column,
+            position.lineNumber,
+            position.column
+          )
+        });
+        
+        suggestions.push({
+          label: 'meta-description',
+          kind: monacoRef.current.languages.CompletionItemKind.Snippet,
+          documentation: "Add SEO meta description",
+          insertText: '<meta name="description" content="Page description">',
+          range: new monacoRef.current.Range(
+            position.lineNumber,
+            position.column,
+            position.lineNumber,
+            position.column
+          )
+        });
+      }
+      
+      // If typing in body section
+      if (model.getValue().includes('<body>') && position.lineNumber > model.getLineCount() / 2) {
+        if (lineContent.includes('class=')) {
+          suggestions.push({
+            label: 'container-div',
+            kind: monacoRef.current.languages.CompletionItemKind.Snippet,
+            documentation: "Add responsive container div",
+            insertText: '<div class="container">\n  $0\n</div>',
+            range: new monacoRef.current.Range(
+              position.lineNumber,
+              position.column,
+              position.lineNumber,
+              position.column
+            )
+          });
+        }
+        
+        if (lineContent.includes('<h')) {
+          suggestions.push({
+            label: 'heading-with-class',
+            kind: monacoRef.current.languages.CompletionItemKind.Snippet,
+            documentation: "Add heading with class",
+            insertText: '<h1 class="heading">$0</h1>',
+            range: new monacoRef.current.Range(
+              position.lineNumber,
+              position.column,
+              position.lineNumber,
+              position.column
+            )
+          });
+        }
+      }
+      
+      // Add more context-aware suggestions as needed
+      
+      return { suggestions };
+    } catch (error) {
+      console.error("AI suggestion error:", error);
+      return { suggestions: [] };
+    } finally {
+      setIsAILoading(false);
+    }
+  };
 
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -252,7 +335,6 @@ export default function EditorPage() {
             <Button variant="outline" onClick={() => router.push('/')}>
               Back to Generator
             </Button>
-           
             
             <div className="border rounded-lg p-1 flex gap-1 bg-muted">
               <Button
@@ -285,16 +367,30 @@ export default function EditorPage() {
               <RotateCwIcon className="mr-2 h-4 w-4" />
               Refresh
             </Button>
-           {user && (
-  <Button onClick={handleSave} disabled={isSaving}>
-    {isSaving ? (
-      <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-    ) : (
-      <SaveIcon className="mr-2 h-4 w-4" />
-    )}
-    Save
-  </Button>
-)}
+
+            <Button 
+              variant={isAIEnabled ? "default" : "outline"} 
+              onClick={toggleAI}
+              disabled={isAILoading}
+            >
+              {isAILoading ? (
+                <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <SparklesIcon className="mr-2 h-4 w-4" />
+              )}
+              {isAIEnabled ? "AI On" : "AI Off"}
+            </Button>
+
+            {user && (
+              <Button onClick={handleSave} disabled={isSaving}>
+                {isSaving ? (
+                  <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <SaveIcon className="mr-2 h-4 w-4" />
+                )}
+                Save
+              </Button>
+            )}
             <Button onClick={handleDownload}>
               <DownloadIcon className="mr-2 h-4 w-4" />
               Download
@@ -319,6 +415,52 @@ export default function EditorPage() {
               wordWrap: 'on',
               formatOnPaste: true,
               formatOnType: true,
+              quickSuggestions: {
+                other: true,
+                comments: true,
+                strings: true
+              },
+              suggest: {
+                showWords: true,
+                showSnippets: true,
+                showClasses: true,
+                showMethods: true,
+                showFunctions: true,
+                showProperties: true,
+                showVariables: true,
+                showFields: true,
+                showConstructors: true,
+                showInterfaces: true,
+                showModules: true,
+                showReferences: true,
+                showEnums: true,
+                showStructs: true,
+                showEvents: true,
+                showOperators: true,
+                showUnits: true,
+                showValues: true,
+                showConstants: true,
+                showKeywords: true,
+                showColors: true,
+                showFiles: true,
+                showUsers: true,
+                showFolders: true,
+              },
+              parameterHints: {
+                enabled: true
+              },
+              tabCompletion: "on",
+            }}
+            onMount={(editor, monaco) => {
+              editorRef.current = editor;
+              monacoRef.current = monaco;
+              
+              // Register completion item provider
+              monaco.languages.registerCompletionItemProvider('html', {
+                provideCompletionItems: async (model, position) => {
+                  return await getAISuggestions(model, position);
+                }
+              });
             }}
           />
         </div>
