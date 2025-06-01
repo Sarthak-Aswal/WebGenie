@@ -19,7 +19,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex flex-col h-screen justify-center items-center bg-white dark:bg-black transition-colors duration-300" style={{
-        backgroundImage: "url('/images/login-hero.jpg')",
+        backgroundImage: "url('/images/login-hero.png')",
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
