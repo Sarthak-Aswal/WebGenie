@@ -30,7 +30,11 @@ const TabletIcon = dynamic(() => import('lucide-react').then(mod => mod.Tablet))
 const MonitorIcon = dynamic(() => import('lucide-react').then(mod => mod.Monitor));
 const SparklesIcon = dynamic(() => import('lucide-react').then(mod => mod.Sparkles));
 const CheckCircle2 = dynamic(() => import('lucide-react').then(mod => mod.CheckCircle2));
-//const Progress = dynamic(() => import('@/components/ui/progress').then(mod => mod.Progress));
+const Progress = dynamic(
+  () => import('@/components/ui/progress').then(mod => mod.Progress),
+  { ssr: false }
+);
+
 const XCircle = dynamic(() => import('lucide-react').then(mod => mod.XCircle));
 export default function EditorPage() {
   const [projectId, setProjectId] = useState<string | null>(null);
@@ -163,7 +167,7 @@ const SEOAnalyzer = ({ html }: { html: string }) => {
           <h3 className="text-lg font-semibold">SEO Score</h3>
           <span className="text-2xl font-bold">{analysis.score}%</span>
         </div>
-        {/*<Progress value={analysis.score} className="h-2" />*/ }
+        <Progress value={analysis.score} className="h-2" />
           
        
       </div>
