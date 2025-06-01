@@ -167,7 +167,7 @@ const SEOAnalyzer = ({ html }: { html: string }) => {
           <h3 className="text-lg font-semibold">SEO Score</h3>
           <span className="text-2xl font-bold">{analysis.score}%</span>
         </div>
-        <Progress value={analysis.score} className="h-2" />
+        <Progress value={50} className="h-2" />
           
        
       </div>
