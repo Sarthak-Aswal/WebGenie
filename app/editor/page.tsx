@@ -465,8 +465,10 @@ export default function EditorPage() {
       if (!generatedText.includes('<!DOCTYPE html>') || !generatedText.includes('<html')) {
         throw new Error('Invalid HTML generated');
       }
-
-      setCode(generatedText);
+const cleanedHtml = generatedText
+  .replace(/^```html\s*/, '') // Remove starting '''html (with optional space/newline)
+  .replace(/```$/, '');       // Remove ending '''
+      setCode(cleanedHtml);
       toast.success("Code updated with AI modifications");
     } catch (error) {
       console.error("AI error:", error);
