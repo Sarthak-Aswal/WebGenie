@@ -19,7 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: `Generate a complete responsive HTML and css wesbite and css should be in html page only . ${prompt}` }] }],
+        contents: [{ parts: [{ text: `You are a front end dev.Generate a complete responsive HTML and css wesbite and css should be in html page only. the site should be responsive and have header,navbar,hero section, footer,landing page and other necessary section. . ${prompt}` }] }],
       }),
     });
 
