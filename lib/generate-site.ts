@@ -1,7 +1,7 @@
 // File: pages/api/generate-site.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-const GEMINI_API_KEY = "AIzaSyBMnwO0L5CeCfOG7t2CmeyvuuSal2z51ug"; // Store in .env.local
+
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
